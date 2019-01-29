@@ -138,7 +138,7 @@ if (!process.argv[2]) {
         return {
           tx: Object.assign({}, tx1, {
             // per-day memoization
-            price: p
+            Price: p
           }),
           error: err
         }
