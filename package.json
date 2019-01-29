@@ -1,0 +1,15 @@
+{
+  "name": "cost-basis-filler",
+  "description": "Generate missing cost basis for unknown crypto purchases from day-of historical price",
+  "version": "0.0.0",
+  "author": {
+    "name": "Raine Revere",
+    "email": "raineorshine@gmail.com",
+    "url": "https://github.com/raineorshine"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "csvtojson": "^2.0.8",
+    "json2csv": "^4.3.3"
+  }
+}
