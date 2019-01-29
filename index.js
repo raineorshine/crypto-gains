@@ -1,8 +1,20 @@
 const csvtojson = require('csvtojson')
 const json2csv = require('json2csv')
+const got = require('got')
+const secure = require('./secure.json')
+const memoize = require('p-memoize')
 
-// get the day of the tx
-const day = tx => tx['Trade Date'].split(' ')[0]
+const sampleSize = 3
+
+// get the day of the date
+const day = date => date.split(' ')[0]
+
+// convert to y-m-d
+const normalDate = tx => {
+  const d = tx['Trade Date']
+  return `${d.slice(6, 10)}-${d.slice(3, 5)}-${d.slice(0, 2)} ${d.slice(11)}`
+  // 18.06.2016 15:14 0
+}
 
 // get the opposite tx type: Deposit/Withdrawal
 const otherType = tx => tx.Type === 'Deposit' ? 'Withdrawal' : 'Deposit'
@@ -38,6 +50,26 @@ const match = (tx1, tx2) =>
   tx1.CurSell === tx2.CurBuy &&
   closeEnough(tx1, tx2)
 
+const price = memoize(async (from, to, time) => {
+  const url = `https://min-api.cryptocompare.com/data/pricehistorical?fsym=${from}&tsyms=${to}&ts=${(new Date(time)).getTime()/1000}&api_key=${secure.cryptoCompareApiKey}&extraParams=cost-basis-filler`
+  const data = JSON.parse((await got(url))
+  .body)
+
+  if (data[from]) {
+    return data[from][to]
+  }
+  else if (data.Message.startsWith('There is no data for the symbol')) {
+    throw new Error(`No price for ${from} on ${time}`)
+  }
+  else if (data.Response === 'Error') {
+    throw new Error(data.Message)
+  }
+  else {
+    throw new Error('Unknown Response', data)
+  }
+})
+
+
 /****************************************************************
 * RUN
 *****************************************************************/
@@ -48,12 +80,15 @@ if (!process.argv[2]) {
 }
 
 // import csv
-csvtojson().fromFile(process.argv[2]).then(rawData => {
+
+  (async () => {
+
+  const rawData = await csvtojson().fromFile(process.argv[2])
 
   // index by day
   const txsByDay = {}
   for (let i=0; i<rawData.length; i++) {
-    const key = day(rawData[i])
+    const key = day(rawData[i]['Trade Date'])
     if (!(key in txsByDay)) {
       txsByDay[key] = []
     }
@@ -62,12 +97,13 @@ csvtojson().fromFile(process.argv[2]).then(rawData => {
 
   // separate out d&w that match on a given day
   const matched = []
-  const unmatched = []
   const withdrawals = []
+  const unmatchedRequests = [] // thunks
 
   // loop through each day
-  for (let day in txsByDay) {
-    const group = txsByDay[day]
+  start:
+  for (let key in txsByDay) {
+    const group = txsByDay[key]
 
     // loop through each transaction
     txLoop:
@@ -89,8 +125,26 @@ csvtojson().fromFile(process.argv[2]).then(rawData => {
           continue txLoop // jump to next tx
         }
       }
-      unmatched.push(tx1)
+
+      unmatchedRequests.push(async () => {
+        let p, err
+        try {
+          p = await price(tx1.CurBuy, 'USD', day(normalDate(tx1)))
+        }
+        catch (e) {
+          err = e.message
+        }
+
+        return {
+          tx: Object.assign({}, tx1, {
+            // per-day memoization
+            price: p
+          }),
+          error: err
+        }
+      })
     }
+
   }
 
   // output
@@ -99,13 +153,41 @@ csvtojson().fromFile(process.argv[2]).then(rawData => {
     console.log('Total Days: ', Object.keys(txsByDay).length)
     console.log('Withdrawals: ', withdrawals.length)
     console.log('Matched Deposits: ', matched.length)
-    console.log('Unmatched Deposits: ', unmatched.length)
+    console.log('Unmatched Deposits: ', unmatchedRequests.length)
   }
   else {
+
+    var ProgressBar = require('progress');
+
+    const unmatched = []
+    let errors = []
+
+    if (sampleSize) {
+      console.warn(`Sampling ${sampleSize} of ${unmatchedRequests.length} transactions.`)
+    }
+
+    const numRequests = Math.min(unmatchedRequests.length, sampleSize !== undefined ? sampleSize : Infinity)
+    const bar = new ProgressBar(':current/:total :percent :etas (:token1 errors)', { total: numRequests })
+    for (let i=0; i<numRequests; i++) {
+      const result = await unmatchedRequests[i]()
+      if (!result.error) {
+        unmatched.push(result.tx)
+      }
+      else {
+        errors.push(result.error)
+      }
+      bar.tick({ token1: errors.length })
+    }
+
+    if (errors.length > 0) {
+      console.warn(errors.join('\n'))
+    }
+
     console.log(json2csv.parse(unmatched, {
       delimiter: '\t',
       quote: '',
       fields: null
     }))
   }
-})
+
+  })()

@@ -10,6 +10,9 @@
   "license": "ISC",
   "dependencies": {
     "csvtojson": "^2.0.8",
-    "json2csv": "^4.3.3"
+    "got": "^9.6.0",
+    "json2csv": "^4.3.3",
+    "p-memoize": "^2.1.0",
+    "progress": "^2.0.3"
   }
 }

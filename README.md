@@ -1,7 +1,5 @@
 Generate missing cost basis for unknown crypto purchases from day-of historical price.
 
-[sample-d&w.csv](https://github.com/raineorshine/cost-basis-filler/blob/master/sample-d%26w.csv) is from [cointracking.info/trades](https://cointracking.info/trades.php). Rename the duplicate "Cur." in header to "CurBuy" and "CurSell".
-
     $ node index.js d&w.csv summary
 
     Deposit  -   5.02621700  ETH Kraken
@@ -16,3 +14,9 @@ Generate missing cost basis for unknown crypto purchases from day-of historical 
     Withdrawals:  3913
     Matched Deposits:  564
     Unmatched Deposits:  402
+
+## Installation
+
+1. Rename secure-sample.json to secure.json and add valid API keys.
+2. [sample-d&w.csv](https://github.com/raineorshine/cost-basis-filler/blob/master/sample-d%26w.csv) is from [cointracking.info/trades](https://cointracking.info/trades.php). Rename the duplicate "Cur." in header to "CurBuy" and "CurSell".
+3. Clone the repo.
