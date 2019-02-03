@@ -153,6 +153,7 @@ for (let key in txsByDay) {
         return {
           tx: Object.assign({}, tx1, {
             // per-day memoization
+            Comment: 'Cost Basis',
             Type: 'Income',
             Price: p
           }),
@@ -162,6 +163,7 @@ for (let key in txsByDay) {
     }
     else if (!sampleSize || unmatched.length < sampleSize) {
       unmatched.push(Object.assign({}, tx1, {
+        Comment: 'Cost Basis',
         Type: 'Income'
       }))
     }
