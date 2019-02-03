@@ -111,7 +111,8 @@ for (let i=0; i<rawData.length; i++) {
 // separate out d&w that match on a given day
 const matched = []
 const withdrawals = []
-const unmatchedRequests = [] // thunks
+const unmatchedRequests = [] // thunks for prices
+  const unmatched = []
 
 // loop through each day
 start:
@@ -139,63 +140,75 @@ for (let key in txsByDay) {
       }
     }
 
-    unmatchedRequests.push(async () => {
-      let p, err
-      try {
-        p = await price(tx1.CurBuy, 'USD', day(normalDate(tx1)))
-      }
-      catch (e) {
-        err = e.message
-      }
+    if (command === 'prices') {
+      unmatchedRequests.push(async () => {
+        let p, err
+        try {
+          p = await price(tx1.CurBuy, 'USD', day(normalDate(tx1)))
+        }
+        catch (e) {
+          err = e.message
+        }
 
-      return {
-        tx: Object.assign({}, tx1, {
-          // per-day memoization
-          Price: p
-        }),
-        error: err
+        return {
+          tx: Object.assign({}, tx1, {
+            // per-day memoization
+            Price: p
+          }),
+          error: err
+        }
+      })
+    }
+    else {
+      if (unmatched.length < sampleSize) {
+        unmatched.push(Object.assign({}, tx1, {
+          Type: 'Income'
+        }))
       }
-    })
+    }
   }
 
 }
 
-// output
+// summary
 if (command === 'summary') {
   console.log('Transactions: ', rawData.length)
   console.log('Total Days: ', Object.keys(txsByDay).length)
   console.log('Withdrawals: ', withdrawals.length)
   console.log('Matched Deposits: ', matched.length)
-  console.log('Unmatched Deposits: ', unmatchedRequests.length)
+  console.log('Unmatched Deposits: ', rawData.length - withdrawals.length - matched.length)
 }
 else {
 
-  var ProgressBar = require('progress');
+  // prices
+  if (command === 'prices') {
+    const ProgressBar = require('progress')
 
-  const unmatched = []
-  let errors = []
+    let errors = []
 
-  if (sampleSize) {
-    console.warn(`Sampling ${sampleSize} of ${unmatchedRequests.length} transactions.`)
-  }
-
-  const numRequests = Math.min(unmatchedRequests.length, sampleSize !== undefined ? sampleSize : Infinity)
-  const bar = new ProgressBar(':current/:total :percent :etas (:token1 errors)', { total: numRequests })
-  for (let i=0; i<numRequests; i++) {
-    const result = await unmatchedRequests[i]()
-    if (!result.error) {
-      unmatched.push(result.tx)
+    if (sampleSize) {
+      console.warn(`Sampling ${sampleSize} of ${unmatchedRequests.length} transactions.`)
     }
-    else {
-      errors.push(result.error)
+
+    const numRequests = Math.min(unmatchedRequests.length, sampleSize !== undefined ? sampleSize : Infinity)
+    const bar = new ProgressBar(':current/:total :percent :etas (:token1 errors)', { total: numRequests })
+    for (let i=0; i<numRequests; i++) {
+      const result = await unmatchedRequests[i]()
+      if (!result.error) {
+        unmatched.push(result.tx)
+      }
+      else {
+        errors.push(result.error)
+      }
+      bar.tick({ token1: errors.length })
     }
-    bar.tick({ token1: errors.length })
+
+    if (errors.length > 0) {
+      console.warn(errors.join('\n'))
+    }
   }
 
-  if (errors.length > 0) {
-    console.warn(errors.join('\n'))
-  }
-
+  // output
   const csv = json2csv.parse(unmatched, {
     delimiter: '\t',
     quote: '',
