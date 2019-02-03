@@ -5,7 +5,7 @@ const got = require('got')
 const secure = require('./secure.json')
 const memoize = require('p-memoize')
 
-const sampleSize = 3
+const sampleSize = 0
 
 // get the day of the date
 const day = date => date.split(' ')[0]
@@ -125,7 +125,7 @@ for (let key in txsByDay) {
     const tx1 = group[i]
 
     // disable tooSmallToCount as there are not that many total deposits
-    if (tx1.Type !== 'Deposit' || tooSmallToCount(tx1)) {
+    if (tx1.Type !== 'Deposit' || tooSmallToCount(tx1) || tx1.CurBuy === 'USD') {
       withdrawals.push(tx1)
       continue
     }
@@ -153,19 +153,19 @@ for (let key in txsByDay) {
         return {
           tx: Object.assign({}, tx1, {
             // per-day memoization
+            Type: 'Income',
             Price: p
           }),
           error: err
         }
       })
     }
-    else {
-      if (unmatched.length < sampleSize) {
-        unmatched.push(Object.assign({}, tx1, {
-          Type: 'Income'
-        }))
-      }
+    else if (!sampleSize || unmatched.length < sampleSize) {
+      unmatched.push(Object.assign({}, tx1, {
+        Type: 'Income'
+      }))
     }
+    // ignore txs beyond sampleSize
   }
 
 }
