@@ -1,3 +1,4 @@
+const fs = require('fs')
 const csvtojson = require('csvtojson')
 const json2csv = require('json2csv')
 const got = require('got')
@@ -74,120 +75,138 @@ const price = memoize(async (from, to, time) => {
 * RUN
 *****************************************************************/
 
-if (!process.argv[2]) {
+const file = process.argv[2]
+const command = process.argv[3]
+
+if (!file) {
   console.error('Please specify a file')
   process.exit(1)
 }
 
 // import csv
 
-  (async () => {
+(async () => {
 
-  const rawData = await csvtojson().fromFile(process.argv[2])
+let input = fs.readFileSync(process.argv[2], 'utf-8')
+// replace double Cur. with CurBuy and CurSell
+// RESUME
+const lines = input.split('\n')
+const inputCorrected = [].concat(
+  lines[0]
+    .replace('Cur.', 'CurBuy').replace('Cur.', 'CurSell'),
+  lines.slice(1)
+).join('\n')
+const rawData = await csvtojson().fromString(inputCorrected)
 
-  // index by day
-  const txsByDay = {}
-  for (let i=0; i<rawData.length; i++) {
-    const key = day(rawData[i]['Trade Date'])
-    if (!(key in txsByDay)) {
-      txsByDay[key] = []
-    }
-    txsByDay[key].push(rawData[i])
+// index by day
+const txsByDay = {}
+for (let i=0; i<rawData.length; i++) {
+  const key = day(rawData[i]['Trade Date'])
+  if (!(key in txsByDay)) {
+    txsByDay[key] = []
   }
+  txsByDay[key].push(rawData[i])
+}
 
-  // separate out d&w that match on a given day
-  const matched = []
-  const withdrawals = []
-  const unmatchedRequests = [] // thunks
+// separate out d&w that match on a given day
+const matched = []
+const withdrawals = []
+const unmatchedRequests = [] // thunks
 
-  // loop through each day
-  start:
-  for (let key in txsByDay) {
-    const group = txsByDay[key]
+// loop through each day
+start:
+for (let key in txsByDay) {
+  const group = txsByDay[key]
 
-    // loop through each transaction
-    txLoop:
-    for (let i in group) {
-      const tx1 = group[i]
+  // loop through each transaction
+  txLoop:
+  for (let i in group) {
+    const tx1 = group[i]
 
-      // disable tooSmallToCount as there are not that many total deposits
-      if (tx1.Type !== 'Deposit' || tooSmallToCount(tx1)) {
-        withdrawals.push(tx1)
-        continue
+    // disable tooSmallToCount as there are not that many total deposits
+    if (tx1.Type !== 'Deposit' || tooSmallToCount(tx1)) {
+      withdrawals.push(tx1)
+      continue
+    }
+
+    // loop through each other transaction
+    for (let i2 in group) {
+      const tx2 = group[i2]
+      // match negligible transactions
+      if(match(tx1, tx2)) {
+        matched.push(tx1)
+        continue txLoop // jump to next tx
+      }
+    }
+
+    unmatchedRequests.push(async () => {
+      let p, err
+      try {
+        p = await price(tx1.CurBuy, 'USD', day(normalDate(tx1)))
+      }
+      catch (e) {
+        err = e.message
       }
 
-      // loop through each other transaction
-      for (let i2 in group) {
-        const tx2 = group[i2]
-        // match negligible transactions
-        if(match(tx1, tx2)) {
-          matched.push(tx1)
-          continue txLoop // jump to next tx
-        }
+      return {
+        tx: Object.assign({}, tx1, {
+          // per-day memoization
+          Price: p
+        }),
+        error: err
       }
-
-      unmatchedRequests.push(async () => {
-        let p, err
-        try {
-          p = await price(tx1.CurBuy, 'USD', day(normalDate(tx1)))
-        }
-        catch (e) {
-          err = e.message
-        }
-
-        return {
-          tx: Object.assign({}, tx1, {
-            // per-day memoization
-            Price: p
-          }),
-          error: err
-        }
-      })
-    }
-
+    })
   }
 
-  // output
-  if (process.argv[3] === 'summary') {
-    console.log('Transactions: ', rawData.length)
-    console.log('Total Days: ', Object.keys(txsByDay).length)
-    console.log('Withdrawals: ', withdrawals.length)
-    console.log('Matched Deposits: ', matched.length)
-    console.log('Unmatched Deposits: ', unmatchedRequests.length)
-  }
-  else {
+}
 
-    var ProgressBar = require('progress');
+// output
+if (command === 'summary') {
+  console.log('Transactions: ', rawData.length)
+  console.log('Total Days: ', Object.keys(txsByDay).length)
+  console.log('Withdrawals: ', withdrawals.length)
+  console.log('Matched Deposits: ', matched.length)
+  console.log('Unmatched Deposits: ', unmatchedRequests.length)
+}
+else {
 
-    const unmatched = []
-    let errors = []
+  var ProgressBar = require('progress');
 
-    if (sampleSize) {
-      console.warn(`Sampling ${sampleSize} of ${unmatchedRequests.length} transactions.`)
-    }
+  const unmatched = []
+  let errors = []
 
-    const numRequests = Math.min(unmatchedRequests.length, sampleSize !== undefined ? sampleSize : Infinity)
-    const bar = new ProgressBar(':current/:total :percent :etas (:token1 errors)', { total: numRequests })
-    for (let i=0; i<numRequests; i++) {
-      const result = await unmatchedRequests[i]()
-      if (!result.error) {
-        unmatched.push(result.tx)
-      }
-      else {
-        errors.push(result.error)
-      }
-      bar.tick({ token1: errors.length })
-    }
-
-    if (errors.length > 0) {
-      console.warn(errors.join('\n'))
-    }
-
-    console.log(json2csv.parse(unmatched, {
-      delimiter: '\t',
-      quote: '',
-      fields: null
-    }))
+  if (sampleSize) {
+    console.warn(`Sampling ${sampleSize} of ${unmatchedRequests.length} transactions.`)
   }
 
-  })()
+  const numRequests = Math.min(unmatchedRequests.length, sampleSize !== undefined ? sampleSize : Infinity)
+  const bar = new ProgressBar(':current/:total :percent :etas (:token1 errors)', { total: numRequests })
+  for (let i=0; i<numRequests; i++) {
+    const result = await unmatchedRequests[i]()
+    if (!result.error) {
+      unmatched.push(result.tx)
+    }
+    else {
+      errors.push(result.error)
+    }
+    bar.tick({ token1: errors.length })
+  }
+
+  if (errors.length > 0) {
+    console.warn(errors.join('\n'))
+  }
+
+  const csv = json2csv.parse(unmatched, {
+    delimiter: '\t',
+    quote: '',
+    fields: null
+  })
+  const csvLines = csv.split('\n')
+  const csvCorrected = [].concat(
+    csvLines[0].replace('CurBuy', 'Cur.').replace('CurSell', 'Cur.'),
+    csvLines.slice(1)
+  ).join('\n')
+  console.log(csvCorrected)
+}
+
+})()
