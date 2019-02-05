@@ -5,7 +5,7 @@ const got = require('got')
 const secure = require('./secure.json')
 const memoize = require('p-memoize')
 
-const sampleSize = 0
+const sampleSize = 3
 
 // get the day of the date
 const day = date => date.split(' ')[0]
@@ -143,10 +143,17 @@ for (let key in txsByDay) {
     // otherwise we have an unmatched transaction
     delete tx1.field1
 
+    const newTx = Object.assign({}, tx1, {
+      Type: 'Income',
+      Comment: 'Cost Basis',
+      Group: ''
+    })
+
     if (command === 'prices') {
       unmatchedRequests.push(async () => {
         let p, err
         try {
+          // per-day memoization
           p = await price(tx1.CurBuy, 'USD', day(normalDate(tx1)))
         }
         catch (e) {
@@ -154,23 +161,15 @@ for (let key in txsByDay) {
         }
 
         return {
-          tx: Object.assign({}, tx1, {
-            // per-day memoization
-            Comment: 'Cost Basis',
-            Type: 'Income',
-            Price: p
-          }),
+          tx: Object.assign({}, newTx, { Price: p }),
           error: err
         }
       })
     }
-    else if (!sampleSize || unmatched.length < sampleSize) {
-      unmatched.push(Object.assign({}, tx1, {
-        Comment: 'Cost Basis',
-        Type: 'Income'
-      }))
-    }
     // ignore txs beyond sampleSize
+    else if (command !== 'sample' || unmatched.length < sampleSize) {
+      unmatched.push(newTx)
+    }
   }
 
 }
@@ -187,7 +186,7 @@ if (command === 'summary') {
 }
 else {
 
-  if (sampleSize) {
+  if (command === 'sample') {
     console.warn(`Sampling ${sampleSize} of ${numUnmatched} transactions.`)
   }
 
@@ -218,8 +217,7 @@ else {
   // output
   const csv = json2csv.parse(unmatched, {
     delimiter: ',',
-    // quote: '',
-    // fields: null
+    fields: ['Type','Buy','CurBuy','Sell','CurSell','Exchange','Trade Group',,,'Comment','Trade Date']
   })
   const csvLines = csv.split('\n')
   const csvCorrected = [].concat(
