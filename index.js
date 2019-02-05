@@ -214,9 +214,9 @@ else {
 
   // output
   const csv = json2csv.parse(unmatched, {
-    delimiter: '\t',
-    quote: '',
-    fields: null
+    delimiter: ',',
+    // quote: '',
+    // fields: null
   })
   const csvLines = csv.split('\n')
   const csvCorrected = [].concat(
