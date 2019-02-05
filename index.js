@@ -172,25 +172,27 @@ for (let key in txsByDay) {
 
 }
 
+const numUnmatched = rawData.length - withdrawals.length - matched.length
+
 // summary
 if (command === 'summary') {
   console.log('Transactions: ', rawData.length)
   console.log('Total Days: ', Object.keys(txsByDay).length)
   console.log('Withdrawals: ', withdrawals.length)
   console.log('Matched Deposits: ', matched.length)
-  console.log('Unmatched Deposits: ', rawData.length - withdrawals.length - matched.length)
+  console.log('Unmatched Deposits: ', numUnmatched)
 }
 else {
+
+  if (sampleSize) {
+    console.warn(`Sampling ${sampleSize} of ${numUnmatched} transactions.`)
+  }
 
   // prices
   if (command === 'prices') {
     const ProgressBar = require('progress')
 
     let errors = []
-
-    if (sampleSize) {
-      console.warn(`Sampling ${sampleSize} of ${unmatchedRequests.length} transactions.`)
-    }
 
     const numRequests = Math.min(unmatchedRequests.length, sampleSize !== undefined ? sampleSize : Infinity)
     const bar = new ProgressBar(':current/:total :percent :etas (:token1 errors)', { total: numRequests })
