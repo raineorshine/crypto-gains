@@ -140,6 +140,9 @@ for (let key in txsByDay) {
       }
     }
 
+    // otherwise we have an unmatched transaction
+    delete tx1.field1
+
     if (command === 'prices') {
       unmatchedRequests.push(async () => {
         let p, err

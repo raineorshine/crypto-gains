@@ -3,19 +3,19 @@ Generate missing cost basis for unknown crypto deposits from day-of historical p
     $ node index.js data.csv
 
     402/402 100% 0.0s (0 errors)
-    field1  Type  Buy Cur.  Sell  Cur. Exchange  Trade Group Comment Trade Date
-      Income 0.00059200  BTC -   Coinbase      06.04.2016 08:47
-      Income 27.25163848 BTC -   Coinbase      20.05.2016 16:46
-      Income 0.63300000  BTC -   Kraken  Kraken Ledger   18.06.2016 15:14
+    Type  Buy Cur.  Sell  Cur. Exchange  Trade Group Comment Trade Date
+    Income 0.00059200  BTC -   Coinbase      06.04.2016 08:47
+    Income 27.25163848 BTC -   Coinbase      20.05.2016 16:46
+    Income 0.63300000  BTC -   Kraken  Kraken Ledger   18.06.2016 15:14
     ...
 
     $ node index.js data.csv prices
 
     402/402 100% 0.0s (0 errors)
-    field1  Type  Buy Cur.  Sell  Cur. Exchange  Trade Group Comment Trade Date  Price
-      Income 0.00059200  BTC -   Coinbase      06.04.2016 08:47  421.26
-      Income 27.25163848 BTC -   Coinbase      20.05.2016 16:46  442.11
-      Income 0.63300000  BTC -   Kraken  Kraken Ledger   18.06.2016 15:14  753.77
+    Type  Buy Cur.  Sell  Cur. Exchange  Trade Group Comment Trade Date  Price
+    Income 0.00059200  BTC -   Coinbase      06.04.2016 08:47  421.26
+    Income 27.25163848 BTC -   Coinbase      20.05.2016 16:46  442.11
+    Income 0.63300000  BTC -   Kraken  Kraken Ledger   18.06.2016 15:14  753.77
     ...
 
     $ node index.js data.csv summary
@@ -31,10 +31,10 @@ If a symbol cannot be found, errors will be shown and the price will be empty:
     402/402 100% 0.0s (2 errors)
     No price for BLOOBLOO on 2018-12-11
     No price for BLOGBING on 2018-12-13
-    field1  Type  Buy Cur.  Sell  Cur.Sell Exchange  Trade Group Comment Trade Date  Price
-      Income 1.00000000  BLOOBLOO -   Coinssss      11.12.2018 00:00
-      Income 10.00000000 BLOGBING -   Coinssss      13.12.2018 00:00
-      Income 0.63300000  BTC -   Kraken  Kraken Ledger   18.06.2016 15:14  753.77
+    Type  Buy Cur.  Sell  Cur.Sell Exchange  Trade Group Comment Trade Date  Price
+    Income 1.00000000  BLOOBLOO -   Coinssss      11.12.2018 00:00
+    Income 10.00000000 BLOGBING -   Coinssss      13.12.2018 00:00
+    Income 0.63300000  BTC -   Kraken  Kraken Ledger   18.06.2016 15:14  753.77
 
 ## Installation
 
