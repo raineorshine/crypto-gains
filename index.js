@@ -87,7 +87,7 @@ if (!file) {
 
 (async () => {
 
-let input = fs.readFileSync(process.argv[2], 'utf-8')
+let input = fs.readFileSync(file, 'utf-8')
 // replace double Cur. with CurBuy and CurSell
 // RESUME
 const lines = input.split('\n')
@@ -178,11 +178,11 @@ const numUnmatched = rawData.length - withdrawals.length - matched.length
 
 // summary
 if (command === 'summary') {
-  console.log('Transactions: ', rawData.length)
-  console.log('Total Days: ', Object.keys(txsByDay).length)
-  console.log('Withdrawals: ', withdrawals.length)
-  console.log('Matched Deposits: ', matched.length)
-  console.log('Unmatched Deposits: ', numUnmatched)
+  console.log('Transactions:', rawData.length)
+  console.log('Total Days:', Object.keys(txsByDay).length)
+  console.log('Withdrawals:', withdrawals.length)
+  console.log('Matched Deposits:', matched.length)
+  console.log('Unmatched Deposits:', numUnmatched)
 }
 else {
 
@@ -194,7 +194,7 @@ else {
   if (command === 'prices') {
     const ProgressBar = require('progress')
 
-    let errors = []
+    const errors = []
 
     const numRequests = Math.min(unmatchedRequests.length, sampleSize !== undefined ? sampleSize : Infinity)
     const bar = new ProgressBar(':current/:total :percent :etas (:token1 errors)', { total: numRequests })
