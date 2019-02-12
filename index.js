@@ -5,6 +5,7 @@ const got = require('got')
 const secure = require('./secure.json')
 const memoize = require('p-memoize')
 
+const exchange = 'cccagg' // cryptocompare aggregrate
 const sampleSize = 3
 
 // get the day of the date
@@ -52,7 +53,7 @@ const match = (tx1, tx2) =>
   closeEnough(tx1, tx2)
 
 const price = memoize(async (from, to, time) => {
-  const url = `https://min-api.cryptocompare.com/data/pricehistorical?fsym=${from}&tsyms=${to}&ts=${(new Date(time)).getTime()/1000}&api_key=${secure.cryptoCompareApiKey}&extraParams=cost-basis-filler`
+  const url = `https://min-api.cryptocompare.com/data/pricehistorical?fsym=${from}&tsyms=${to}&ts=${(new Date(time)).getTime()/1000}&e=${exchange}&api_key=${secure.cryptoCompareApiKey}&extraParams=cost-basis-filler`
   const data = JSON.parse((await got(url))
   .body)
 

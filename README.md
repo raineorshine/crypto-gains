@@ -1,4 +1,4 @@
-Generate missing cost basis for unknown crypto deposits from day-of historical price.
+Generate missing cost basis for unknown crypto deposits from [day-of historical price](https://min-api.cryptocompare.com/documentation?key=Historical&cat=dataPriceHistorical).
 
     $ node index.js data.csv
 
@@ -10,6 +10,16 @@ Generate missing cost basis for unknown crypto deposits from day-of historical p
     "Income","0.63300000","BTC","-","","Kraken","Kraken Ledger",,,"Cost Basis","18.06.2016 15:14"
     ...
 
+    $ node index.js data.csv summary
+
+    Transactions:  4879
+    Total Days:  791
+    Withdrawals:  3913
+    Matched Deposits:  564
+    Unmatched Deposits:  402
+
+Calculate prices from cryptocompare aggregrate (cccagg):
+
     $ node index.js data.csv prices
 
     402/402 100% 0.0s (0 errors)
@@ -19,14 +29,6 @@ Generate missing cost basis for unknown crypto deposits from day-of historical p
     "Income","27.25163848","BTC","-","","Coinbase","",,,"Cost Basis","20.05.2016 16:46"
     "Income","0.63300000","BTC","-","","Kraken","Kraken Ledger",,,"Cost Basis","18.06.2016 15:14". "753.77"
     ...
-
-    $ node index.js data.csv summary
-
-    Transactions:  4879
-    Total Days:  791
-    Withdrawals:  3913
-    Matched Deposits:  564
-    Unmatched Deposits:  402
 
 If a symbol cannot be found, errors will be shown and the price will be empty:
 
@@ -38,7 +40,7 @@ If a symbol cannot be found, errors will be shown and the price will be empty:
     "Income","10.00000000",BLOGBING","-","Coinssss","",,"13.12.2018 00:00"
     "Income","0.63300000","BTC","-","Kraken","Krakenger","18.06.2016 15:14"  "753.77"
 
-Use `all.js` to calculate prices and totals (amount * price) for every transaction:
+Use `all.js` to calculate prices and totals (amount * price) for every transaction. Calculates prices from Coinbase.
 
     $ node all.js data.csv
 
