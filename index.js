@@ -97,7 +97,7 @@ const inputCorrected = [].concat(
     .replace('Cur.', 'CurBuy').replace('Cur.', 'CurSell'),
   lines.slice(1)
 ).join('\n')
-const rawData = await csvtojson().fromString(inputCorrected)
+const rawData = await csvtojson().fromString(inputCorrected) // indexed object; not a true array
 
 // index by day
 const txsByDay = {}
@@ -113,7 +113,8 @@ for (let i=0; i<rawData.length; i++) {
 const matched = []
 const withdrawals = []
 const unmatchedRequests = [] // thunks for prices
-  const unmatched = []
+const unmatched = []
+const margin = []
 
 // loop through each day
 start:
@@ -130,6 +131,10 @@ for (let key in txsByDay) {
       withdrawals.push(tx1)
       continue
     }
+    // else if(/margin/.test(tx1['Trade Group']) || /margin/.test(tx1.Comment)) {
+    //   margin.push(tx1)
+    //   continue
+    // }
 
     // loop through each other transaction
     for (let i2 in group) {
@@ -181,6 +186,7 @@ const numUnmatched = rawData.length - withdrawals.length - matched.length
 if (command === 'summary') {
   console.log('Transactions:', rawData.length)
   console.log('Total Days:', Object.keys(txsByDay).length)
+  console.log('Margin Trades', margin.length)
   console.log('Withdrawals:', withdrawals.length)
   console.log('Matched Deposits:', matched.length)
   console.log('Unmatched Deposits:', numUnmatched)
