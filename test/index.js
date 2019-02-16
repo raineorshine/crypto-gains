@@ -18,7 +18,8 @@ describe('stock', () => {
         buyCur: 'ETH',
         sell: 1,
         sellCur: 'BTC',
-        cost: 4000
+        cost: 4000,
+        date: new Date()
       }
     ])
   })
@@ -33,7 +34,8 @@ describe('stock', () => {
         buyCur: 'ETH',
         sell: 0.5,
         sellCur: 'BTC',
-        cost: 2000
+        cost: 2000,
+        date: new Date()
       }
     ])
   })
@@ -49,14 +51,16 @@ describe('stock', () => {
         buyCur: 'ETH',
         sell: 10,
         sellCur: 'BTC',
-        cost: 30000
+        cost: 30000,
+        date: new Date
       },
       {
         buy: 50,
         buyCur: 'ETH',
         sell: 5,
         sellCur: 'BTC',
-        cost: 20000
+        cost: 20000,
+        date: new Date
       },
     ])
   })
@@ -69,7 +73,8 @@ describe('stock', () => {
       {
         amount: 1,
         cur: 'BTC',
-        cost: 4000
+        cost: 4000,
+        date: new Date()
       }
     ])
   })
@@ -91,12 +96,14 @@ describe('stock', () => {
       {
         amount: 10,
         cur: 'BTC',
-        cost: 30000
+        cost: 30000,
+        date: new Date()
       },
       {
         amount: 5,
         cur: 'BTC',
-        cost: 20000
+        cost: 20000,
+        date: new Date()
       },
     ])
   })

@@ -39,7 +39,8 @@ module.exports = (() => {
       exchanges.push({
         amount: lotDebit,
         cur,
-        cost
+        cost,
+        date: lot.date
       })
     }
 
@@ -84,7 +85,8 @@ module.exports = (() => {
         buyCur,
         sell: lotDebit,
         sellCur,
-        cost
+        cost,
+        date: lot.date
       })
     }
 
