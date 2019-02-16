@@ -61,4 +61,48 @@ describe('stock', () => {
     ])
   })
 
+  it('withdraw should work', () => {
+    const stock = Stock()
+    stock.deposit(10, 'BTC', 40000, new Date())
+    const withdrawals = stock.withdraw(1, 'BTC', new Date())
+    assert.deepEqual(withdrawals, [
+      {
+        amount: 1,
+        cur: 'BTC',
+        cost: 4000
+      }
+    ])
+  })
+
+  it('withdraw should error if not enough purchases', () => {
+    const stock = Stock()
+    let error
+    stock.deposit(10, 'BTC', 40000, new Date())
+    const errorF = () => stock.withdraw(11, 'BTC', new Date())
+    assert.throws(errorF)
+  })
+
+  it('withdraw should work across multiple purchases', () => {
+    const stock = Stock()
+    stock.deposit(10, 'BTC', 30000, new Date())
+    stock.deposit(10, 'BTC', 40000, new Date())
+    const withdrawals = stock.withdraw(15, 'BTC', new Date())
+    assert.deepEqual(withdrawals, [
+      {
+        amount: 10,
+        cur: 'BTC',
+        cost: 30000
+      },
+      {
+        amount: 5,
+        cur: 'BTC',
+        cost: 20000
+      },
+    ])
+  })
+
+  it.skip('trade should add new lot', () => {
+
+  })
+
 })
