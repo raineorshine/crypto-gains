@@ -101,8 +101,11 @@ describe('stock', () => {
     ])
   })
 
-  it.skip('trade should add new lot', () => {
-
+  it('trade should add new lot', () => {
+    const stock = Stock()
+    stock.deposit(1, 'BTC', 4000, new Date())
+    stock.trade(1, 'BTC', 10, 'ETH', new Date())
+    stock.withdraw(10, 'ETH')
   })
 
 })
