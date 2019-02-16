@@ -20,13 +20,12 @@ module.exports = (() => {
     const exchanges = []
     while (pending > 0) {
       const lot = next(sellCur)
-      let sellSize
-      let cost
+      let lotDebit, cost
       if (!lot) throw new Error(`No available purchase for ${sell} ${sellCur} (${sell - pending} ${sellCur} found)`)
 
       // lot has a larger supply than is needed
       if (lot.amount > pending) {
-        sellSize  = pending
+        lotDebit = pending
         cost = lot.cost * (pending / lot.amount)
         lot.amount -= pending
         lot.cost -= cost
@@ -35,15 +34,16 @@ module.exports = (() => {
       // lot is not big enough
       else {
         remove(lot)
-        sellSize  = lot.amount
+        lotDebit = lot.amount
         cost = lot.cost
         pending -= lot.amount
       }
 
       exchanges.push({
+        buy: buy * (lotDebit / sell),
         buyCur,
+        sell: lotDebit,
         sellCur,
-        sellSize,
         cost
       })
     }
