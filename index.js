@@ -4,6 +4,7 @@ const json2csv = require('json2csv')
 const got = require('got')
 const secure = require('./secure.json')
 const memoize = require('p-memoize')
+const stock = require('./stock.js')()
 
 const exchange = 'cccagg' // cryptocompare aggregrate
 const sampleSize = 3
@@ -70,6 +71,7 @@ const price = memoize(async (from, to, time) => {
     throw new Error('Unknown Response', data)
   }
 })
+
 
 
 /****************************************************************
@@ -142,6 +144,7 @@ for (let key in txsByDay) {
       // match negligible transactions
       if(match(tx1, tx2)) {
         matched.push(tx1)
+        tx1.match = tx2
         continue txLoop // jump to next tx
       }
     }
@@ -191,6 +194,16 @@ if (command === 'summary') {
   console.log('Matched Deposits:', matched.length)
   console.log('Unmatched Deposits:', numUnmatched)
 }
+
+// gains
+else if (command === 'gains') {
+  const n = Math.min(rawData.length, sampleSize)
+  console.log("n", n)
+  for (let i=0; i<n; i++) {
+  }
+}
+
+// default
 else {
 
   if (command === 'sample') {
@@ -203,7 +216,7 @@ else {
 
     const errors = []
 
-    const numRequests = Math.min(unmatchedRequests.length, sampleSize !== undefined ? sampleSize : Infinity)
+    const numRequests = Math.min(unmatchedRequests.length, sampleSize)
     const bar = new ProgressBar(':current/:total :percent :etas (:token1 errors)', { total: numRequests })
     for (let i=0; i<numRequests; i++) {
       const result = await unmatchedRequests[i]()

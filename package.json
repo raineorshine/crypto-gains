@@ -14,5 +14,8 @@
     "json2csv": "^4.3.3",
     "p-memoize": "^2.1.0",
     "progress": "^2.0.3"
+  },
+  "devDependencies": {
+    "mocha": "^5.2.0"
   }
 }
