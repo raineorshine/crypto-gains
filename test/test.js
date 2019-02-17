@@ -6,6 +6,8 @@ describe('stock', () => {
   it('it should allow deposits', () => {
     const stock = Stock()
     stock.deposit(1, 'BTC', 100, new Date())
+    stock.deposit(2, 'BTC', 500, new Date())
+    assert.equal(stock.balance('BTC'), 3)
   })
 
   it('trade should return a single lot when the full trade is available at the same cost basis', () => {
@@ -19,9 +21,12 @@ describe('stock', () => {
         sell: 1,
         sellCur: 'BTC',
         cost: 4000,
-        date: new Date()
+        date: new Date(),
+        dateAcquired: new Date()
       }
     ])
+    assert.equal(stock.balance('BTC'), 0)
+    assert.equal(stock.balance('ETH'), 10)
   })
 
   it('trade should calculate new cost basis proportionally to amount taken from lot', () => {
@@ -35,9 +40,12 @@ describe('stock', () => {
         sell: 0.5,
         sellCur: 'BTC',
         cost: 2000,
-        date: new Date()
+        date: new Date(),
+        dateAcquired: new Date()
       }
     ])
+    assert.equal(stock.balance('BTC'), 0.5)
+    assert.equal(stock.balance('ETH'), 5)
   })
 
   it('trade should return multiple lots taken FIFO when trading on multiple purchases', () => {
@@ -52,7 +60,8 @@ describe('stock', () => {
         sell: 10,
         sellCur: 'BTC',
         cost: 30000,
-        date: new Date
+        date: new Date(),
+        dateAcquired: new Date()
       },
       {
         buy: 50,
@@ -60,9 +69,12 @@ describe('stock', () => {
         sell: 5,
         sellCur: 'BTC',
         cost: 20000,
-        date: new Date
+        date: new Date(),
+        dateAcquired: new Date()
       },
     ])
+    assert.equal(stock.balance('BTC'), 5)
+    assert.equal(stock.balance('ETH'), 150)
   })
 
   it('withdraw should work', () => {
@@ -77,6 +89,7 @@ describe('stock', () => {
         date: new Date()
       }
     ])
+    assert.equal(stock.balance('BTC'), 9)
   })
 
   it('withdraw should error if not enough purchases', () => {
@@ -106,6 +119,7 @@ describe('stock', () => {
         date: new Date()
       },
     ])
+    assert.equal(stock.balance('BTC'), 5)
   })
 
   it('trade should add new lot', () => {
@@ -113,6 +127,8 @@ describe('stock', () => {
     stock.deposit(1, 'BTC', 4000, new Date())
     stock.trade(1, 'BTC', 10, 'ETH', new Date())
     stock.withdraw(10, 'ETH')
+    assert.equal(stock.balance('BTC'), 0)
+    assert.equal(stock.balance('ETH'), 0)
   })
 
 })

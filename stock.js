@@ -2,6 +2,7 @@ module.exports = (() => {
 
   const lots = []
 
+  const balance = cur => lots.filter(lot => lot.cur === cur).reduce((prev, item) => prev + item.amount, 0)
   const next = cur => lots.find(lot => lot.cur === cur)
   const remove = lot => {
     const i = lots.indexOf(lot)
@@ -18,7 +19,7 @@ module.exports = (() => {
     while (pending > 0) {
       const lot = next(cur)
       let lotDebit, cost
-      if (!lot) throw new Error(`No available purchase for ${amount} ${cur} (${amount - pending} ${cur} found)`)
+      if (!lot) throw new Error(`withdraw: No available purchase for ${amount} ${cur} on ${date} (${amount - pending} ${cur} found)`)
 
       // lot has a larger supply than is needed
       if (lot.amount > pending) {
@@ -51,24 +52,35 @@ module.exports = (() => {
     let pending = sell
     const exchanges = []
     while (pending > 0) {
-      const lot = next(sellCur)
-      let lotDebit, cost
-      if (!lot) throw new Error(`No available purchase for ${sell} ${sellCur} (${sell - pending} ${sellCur} found)`)
 
-      // lot has a larger supply than is needed
-      if (lot.amount > pending) {
-        lotDebit = pending
-        cost = lot.cost * (pending / lot.amount)
-        lot.amount -= pending
-        lot.cost -= cost
-        pending = 0
+      let lot, lotDebit, cost
+
+      // do not track USD in stock since it is the basis
+      if (sellCur === 'USD') {
+          lotDebit = sell
+          cost = sell
+          pending = 0
       }
-      // lot is not big enough
+      // non-USD
       else {
-        remove(lot)
-        lotDebit = lot.amount
-        cost = lot.cost
-        pending -= lot.amount
+        lot = next(sellCur)
+        if (!lot) throw new Error(`trade: No available purchase for ${sell} ${sellCur} trade on ${date} (${sell - pending} ${sellCur} found)`)
+
+        // lot has a larger supply than is needed
+        if (lot.amount > pending) {
+          lotDebit = pending
+          cost = lot.cost * (pending / lot.amount)
+          lot.amount -= pending
+          lot.cost -= cost
+          pending = 0
+        }
+        // lot is not big enough
+        else {
+          remove(lot)
+          lotDebit = lot.amount
+          cost = lot.cost
+          pending -= lot.amount
+        }
       }
 
       const buyNew = buy * (lotDebit / sell)
@@ -86,12 +98,13 @@ module.exports = (() => {
         sell: lotDebit,
         sellCur,
         cost,
-        date: lot.date
+        date,
+        dateAcquired: lot ? lot.date : date
       })
     }
 
     return exchanges
   }
 
-  return { deposit, withdraw, trade }
+  return { balance, deposit, withdraw, trade }
 })

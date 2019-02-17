@@ -7,7 +7,7 @@ const memoize = require('p-memoize')
 const stock = require('./stock.js')()
 
 const exchange = 'cccagg' // cryptocompare aggregrate
-const sampleSize = 3
+const sampleSize = Infinity
 
 // get the day of the date
 const day = date => date.split(' ')[0]
@@ -117,6 +117,9 @@ const withdrawals = []
 const unmatchedRequests = [] // thunks for prices
 const unmatched = []
 const margin = []
+const lending = []
+let trades = []
+let sales = []
 
 // loop through each day
 start:
@@ -128,15 +131,25 @@ for (let key in txsByDay) {
   for (let i in group) {
     const tx1 = group[i]
 
+    // if (tx1['Trade Group'] === 'Lending') {
+    //   console.log("tx1", tx1)
+    // }
+
+    // ignore lending
+    if(/lending/i.test(tx1['Trade Group']) || /lending/i.test(tx1.Comment)) {
+      lending.push(tx1)
+      continue
+    }
+    // ignore margin
+    else if(/margin/i.test(tx1['Trade Group']) || /margin/i.test(tx1.Comment)) {
+      margin.push(tx1)
+      continue
+    }
     // disable tooSmallToCount as there are not that many total deposits
-    if (tx1.Type !== 'Deposit' || tooSmallToCount(tx1) || tx1.CurBuy === 'USD') {
+    else if (tx1.Type !== 'Deposit' || tooSmallToCount(tx1) || tx1.CurBuy === 'USD') {
       withdrawals.push(tx1)
       continue
     }
-    // else if(/margin/.test(tx1['Trade Group']) || /margin/.test(tx1.Comment)) {
-    //   margin.push(tx1)
-    //   continue
-    // }
 
     // loop through each other transaction
     for (let i2 in group) {
@@ -183,24 +196,130 @@ for (let key in txsByDay) {
 
 }
 
-const numUnmatched = rawData.length - withdrawals.length - matched.length
+const numUnmatched = rawData.length - withdrawals.length - matched.length - margin.length - lending.length
 
 // summary
 if (command === 'summary') {
   console.log('Transactions:', rawData.length)
   console.log('Total Days:', Object.keys(txsByDay).length)
-  console.log('Margin Trades', margin.length)
+  console.log('Margin Trades:', margin.length)
+  console.log('Lending:', lending.length)
   console.log('Withdrawals:', withdrawals.length)
   console.log('Matched Deposits:', matched.length)
   console.log('Unmatched Deposits:', numUnmatched)
 }
 
-// gains
-else if (command === 'gains') {
+// costbasis
+else if (command === 'costbasis') {
+
   const n = Math.min(rawData.length, sampleSize)
-  console.log("n", n)
+  const errors = []
+
   for (let i=0; i<n; i++) {
+    const tx = rawData[i]
+
+    // ignore "Cost Basis" transactions which were added for the CoinTracking tax report
+    // they are duplicates to unmatched deposits, which we can derive the cost basis of
+    if (tx.Comment === 'Cost Basis') {
+      continue
+    }
+
+    // if (tx.CurBuy) {
+    //   console.log("balance", tx.CurBuy, stock.balance(tx.CurBuy))
+    // }
+    // if (tx.CurSell) {
+    //   console.log("balance", tx.CurSell, stock.balance(tx.CurSell))
+    // }
+    // console.log("tx", tx)
+    switch(tx.Type) {
+      case 'Withdrawal':
+        // ignore USD withdrawals
+        // ignore transactions processed via an out-of-order deposit
+        if (tx.CurSell !== 'USD' && !tx.processed) {
+          // store the cost basis (1 or more) of the withdrawal in the Withdrawal tx object so that the matching Deposit tx has access to the cost basis
+          try {
+            tx.processed = true
+            tx.withdrawals = stock.withdraw(+tx.Sell, tx.CurSell, tx['Trade Date'])
+            // console.log("tx.withdrawals", +tx.Sell, tx.withdrawals)
+          }
+          catch (e) {
+            console.error('ERROR', e.message)
+            errors.push(e)
+          }
+        }
+        // TODO: process pending deposit
+        break
+      case 'Deposit':
+        // USD cost basis = buy amount
+        if (tx.CurBuy === 'USD') {
+          // stock.deposit(+tx.Buy, tx.CurBuy, +tx.Buy, tx['Trade Date'])
+          // ignore USD deposits
+        }
+        // get the cost basis from matching deposits
+        else if (tx.match) {
+
+          // if we get a deposit before its matching withdrawal, go ahead and process the withdrawal now
+          if (!tx.match.processed) {
+            // console.log("Processing out-of-order deposit with", tx.match)
+            try {
+              tx.match.processed = true
+              tx.match.withdrawals = stock.withdraw(+tx.match.Sell, tx.match.CurSell, tx.match['Trade Date'])
+            }
+            catch (e) {
+              console.error('ERROR', e.message)
+              errors.push(e)
+            }
+          }
+
+          if (tx.match.withdrawals) {
+            tx.match.withdrawals.forEach(withdrawal => {
+              stock.deposit(withdrawal.amount, withdrawal.cur, withdrawal.cost, withdrawal.date)
+            })
+          }
+          else {
+            console.error(`ERROR: Matching deposit of ${tx.Buy} ${tx.CurBuy} on ${tx['Trade Date']} with no withdrawals.`)
+            errors.push(tx)
+          }
+        }
+        else {
+          console.warn(`WARNING: No matching withdrawal for deposit of ${tx.Buy} ${tx.CurBuy} on ${tx['Trade Date']}. Using historical price.`)
+          let p = 0
+          try {
+            p = await price(tx.CurBuy, 'USD', day(normalDate(tx)))
+          }
+          stock.deposit(+tx.Buy, tx.CurBuy, tx.Buy * p, tx['Trade Date'])
+          // errors.push('No matching withdrawal for deposit')
+        }
+
+        break
+      case 'Trade':
+        try {
+          const tradeExchanges = stock.trade(+tx.Sell, tx.CurSell, +tx.Buy, tx.CurBuy, tx['Trade Date'])
+          if (tx.CurBuy === 'USD') {
+            sales = sales.concat(tradeExchanges)
+          }
+          else {
+            trades = trades.concat(tradeExchanges)
+          }
+        }
+        catch (e) {
+          console.error('ERROR', e.message)
+          errors.push(e)
+        }
+        break
+      case 'Income':
+        let p = 0
+        try {
+          p = await price(tx.CurBuy, 'USD', day(normalDate(tx)))
+        }
+        stock.deposit(+tx.Buy, tx.CurBuy, tx.Buy * p, tx['Trade Date'])
+        break
+    }
   }
+
+  console.log('trades', trades.length)
+  console.log('sales', sales.length)
+  console.log('errors', errors.length)
 }
 
 // default
