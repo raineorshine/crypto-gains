@@ -118,8 +118,6 @@ const unmatchedRequests = [] // thunks for prices
 const unmatched = []
 const margin = []
 const lending = []
-let trades = []
-let sales = []
 
 // loop through each day
 start:
@@ -207,119 +205,6 @@ if (command === 'summary') {
   console.log('Withdrawals:', withdrawals.length)
   console.log('Matched Deposits:', matched.length)
   console.log('Unmatched Deposits:', numUnmatched)
-}
-
-// costbasis
-else if (command === 'costbasis') {
-
-  const n = Math.min(rawData.length, sampleSize)
-  const errors = []
-
-  for (let i=0; i<n; i++) {
-    const tx = rawData[i]
-
-    // ignore "Cost Basis" transactions which were added for the CoinTracking tax report
-    // they are duplicates to unmatched deposits, which we can derive the cost basis of
-    if (tx.Comment === 'Cost Basis') {
-      continue
-    }
-
-    // if (tx.CurBuy) {
-    //   console.log("balance", tx.CurBuy, stock.balance(tx.CurBuy))
-    // }
-    // if (tx.CurSell) {
-    //   console.log("balance", tx.CurSell, stock.balance(tx.CurSell))
-    // }
-    // console.log("tx", tx)
-    switch(tx.Type) {
-      case 'Withdrawal':
-        // ignore USD withdrawals
-        // ignore transactions processed via an out-of-order deposit
-        if (tx.CurSell !== 'USD' && !tx.processed) {
-          // store the cost basis (1 or more) of the withdrawal in the Withdrawal tx object so that the matching Deposit tx has access to the cost basis
-          try {
-            tx.processed = true
-            tx.withdrawals = stock.withdraw(+tx.Sell, tx.CurSell, tx['Trade Date'])
-            // console.log("tx.withdrawals", +tx.Sell, tx.withdrawals)
-          }
-          catch (e) {
-            console.error('ERROR', e.message)
-            errors.push(e)
-          }
-        }
-        // TODO: process pending deposit
-        break
-      case 'Deposit':
-        // USD cost basis = buy amount
-        if (tx.CurBuy === 'USD') {
-          // stock.deposit(+tx.Buy, tx.CurBuy, +tx.Buy, tx['Trade Date'])
-          // ignore USD deposits
-        }
-        // get the cost basis from matching deposits
-        else if (tx.match) {
-
-          // if we get a deposit before its matching withdrawal, go ahead and process the withdrawal now
-          if (!tx.match.processed) {
-            // console.log("Processing out-of-order deposit with", tx.match)
-            try {
-              tx.match.processed = true
-              tx.match.withdrawals = stock.withdraw(+tx.match.Sell, tx.match.CurSell, tx.match['Trade Date'])
-            }
-            catch (e) {
-              console.error('ERROR', e.message)
-              errors.push(e)
-            }
-          }
-
-          if (tx.match.withdrawals) {
-            tx.match.withdrawals.forEach(withdrawal => {
-              stock.deposit(withdrawal.amount, withdrawal.cur, withdrawal.cost, withdrawal.date)
-            })
-          }
-          else {
-            console.error(`ERROR: Matching deposit of ${tx.Buy} ${tx.CurBuy} on ${tx['Trade Date']} with no withdrawals.`)
-            errors.push(tx)
-          }
-        }
-        else {
-          console.warn(`WARNING: No matching withdrawal for deposit of ${tx.Buy} ${tx.CurBuy} on ${tx['Trade Date']}. Using historical price.`)
-          let p = 0
-          try {
-            p = await price(tx.CurBuy, 'USD', day(normalDate(tx)))
-          }
-          stock.deposit(+tx.Buy, tx.CurBuy, tx.Buy * p, tx['Trade Date'])
-          // errors.push('No matching withdrawal for deposit')
-        }
-
-        break
-      case 'Trade':
-        try {
-          const tradeExchanges = stock.trade(+tx.Sell, tx.CurSell, +tx.Buy, tx.CurBuy, tx['Trade Date'])
-          if (tx.CurBuy === 'USD') {
-            sales = sales.concat(tradeExchanges)
-          }
-          else {
-            trades = trades.concat(tradeExchanges)
-          }
-        }
-        catch (e) {
-          console.error('ERROR', e.message)
-          errors.push(e)
-        }
-        break
-      case 'Income':
-        let p = 0
-        try {
-          p = await price(tx.CurBuy, 'USD', day(normalDate(tx)))
-        }
-        stock.deposit(+tx.Buy, tx.CurBuy, tx.Buy * p, tx['Trade Date'])
-        break
-    }
-  }
-
-  console.log('trades', trades.length)
-  console.log('sales', sales.length)
-  console.log('errors', errors.length)
 }
 
 // default
