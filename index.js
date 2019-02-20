@@ -98,7 +98,6 @@ const price = memoize(async (from, to, time) => {
 })
 
 
-
 /****************************************************************
 * RUN
 *****************************************************************/
@@ -230,6 +229,7 @@ if (command === 'summary') {
 else if (command === 'gains') {
 
   const usdGains = []
+  const shift = []
   let usdSum = 0
 
   // input
@@ -245,12 +245,16 @@ else if (command === 'gains') {
   const gains = Array.prototype.slice.call(await csvtojson().fromString(input2)) // indexed object; not a true array
 
   const usdBuys = trades.filter(trade =>
-    trade.Type === 'Trade' &&
-    trade.CurBuy === 'USD' &&
+    (trade.Comment === 'Shift Card' || // shift card
+    (trade.Type === 'Trade' && trade.CurBuy === 'USD')) && // USD Sale
     trade.CurSell !== 'USDT' // ignore tether
   )
   usdBuys.forEach(trade => {
     const tradeDay = day(trade['Trade Date'])
+
+    if (trade.Comment === 'Shift Card') {
+      shift.push(trade)
+    }
 
     // Kraken Margin gains show up as trades for 0 USD
     if (trade.CurSell === 'USD' && (+trade.Buy === 0 || +trade.Sell === 0)) {
@@ -277,6 +281,7 @@ else if (command === 'gains') {
       gain.Currency === trade.CurSell &&
       +gain.Amount === +trade.Sell
     )
+
     if (gain) {
       usdGains.push(gain)
       usdSum += parseFloat(gain['Gain/Loss in USD'].replace(',', ''))
@@ -284,7 +289,6 @@ else if (command === 'gains') {
     }
     else {
       console.warn(`Unmatched USD Trade of ${trade.Sell} ${trade.CurSell} for ${trade.Buy} ${trade.CurBuy} on ${tradeDay}. Trade Group: ${trade['Trade Group']}, Comment: ${trade.Comment}`)
-      // console.log("trade", trade)
     }
   })
 
@@ -292,11 +296,12 @@ else if (command === 'gains') {
     console.log(toCSV(usdGains, ["Amount","Currency","Date Acquired","Date Sold","Short/Long","Buy /Input at","Sell /Output at","Proceeds in USD","Cost Basis in USD","Gain/Loss in USD"]))
   }
 
-  console.info("trades", trades.length)
-  console.info("gains", gains.length)
-  console.info("usdBuys", usdBuys.length)
-  console.info("usdGains", usdGains.length)
-  console.info("usdSum", Math.round(usdSum * 100) / 100)
+  console.warn("trades", trades.length)
+  console.warn("shift", shift.length)
+  console.warn("gains", gains.length)
+  console.warn("usdBuys", usdBuys.length)
+  console.warn("usdGains", usdGains.length)
+  console.warn("usdSum", Math.round(usdSum * 100) / 100)
 }
 
 /************************************************************************
