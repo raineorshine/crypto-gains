@@ -9,6 +9,31 @@ const stock = require('./stock.js')()
 const exchange = 'cccagg' // cryptocompare aggregrate
 const sampleSize = Infinity
 
+// replace duplicate Cur. with CurBuy, CurSell, CurFee
+const fixHeader = input => {
+  const lines = input.split('\n')
+  return [].concat(
+    lines[0]
+      .replace('Cur.', 'CurBuy')
+      .replace('Cur.', 'CurSell')
+      .replace('Cur.', 'CurFee'),
+    lines.slice(1)
+  ).join('\n')
+}
+
+// convert trades array to CSV and restore header
+const toCSV = (trades, fields=['Type','Buy','CurBuy','Sell','CurSell','Exchange','Trade Group',,,'Comment','Trade Date']) => {
+  const csv = json2csv.parse(trades, { delimiter: ',', fields })
+  const csvLines = csv.split('\n')
+  return [].concat(
+    csvLines[0]
+      .replace('CurBuy', 'Cur.')
+      .replace('CurSell', 'Cur.')
+      .replace('CurFee', 'Cur.'),
+    csvLines.slice(1)
+  ).join('\n')
+}
+
 // get the day of the date
 const day = date => date.split(' ')[0]
 
@@ -78,8 +103,8 @@ const price = memoize(async (from, to, time) => {
 * RUN
 *****************************************************************/
 
-const file = process.argv[2]
-const command = process.argv[3]
+const command = process.argv[2]
+const file = process.argv[3]
 
 if (!file) {
   console.error('Please specify a file')
@@ -90,25 +115,17 @@ if (!file) {
 
 (async () => {
 
-let input = fs.readFileSync(file, 'utf-8')
-// replace double Cur. with CurBuy and CurSell
-// RESUME
-const lines = input.split('\n')
-const inputCorrected = [].concat(
-  lines[0]
-    .replace('Cur.', 'CurBuy').replace('Cur.', 'CurSell'),
-  lines.slice(1)
-).join('\n')
-const rawData = await csvtojson().fromString(inputCorrected) // indexed object; not a true array
+const input = fixHeader(fs.readFileSync(file, 'utf-8'))
+const trades = Array.prototype.slice.call(await csvtojson().fromString(input)) // indexed object; not a true array
 
 // index by day
 const txsByDay = {}
-for (let i=0; i<rawData.length; i++) {
-  const key = day(rawData[i]['Trade Date'])
+for (let i=0; i<trades.length; i++) {
+  const key = day(trades[i]['Trade Date'])
   if (!(key in txsByDay)) {
     txsByDay[key] = []
   }
-  txsByDay[key].push(rawData[i])
+  txsByDay[key].push(trades[i])
 }
 
 // separate out d&w that match on a given day
@@ -194,24 +211,99 @@ for (let key in txsByDay) {
 
 }
 
-const numUnmatched = rawData.length - withdrawals.length - matched.length - margin.length - lending.length
-
-// summary
+/************************************************************************
+ * SUMMARY
+ ************************************************************************/
 if (command === 'summary') {
-  console.log('Transactions:', rawData.length)
+  console.log('Transactions:', trades.length)
   console.log('Total Days:', Object.keys(txsByDay).length)
   console.log('Margin Trades:', margin.length)
   console.log('Lending:', lending.length)
   console.log('Withdrawals:', withdrawals.length)
-  console.log('Matched Deposits:', matched.length)
-  console.log('Unmatched Deposits:', numUnmatched)
+  console.log('Matched:', matched.length)
+  console.log('Unmatched:', unmatched.length)
 }
 
-// default
+/************************************************************************
+ * GAINS
+ ************************************************************************/
+else if (command === 'gains') {
+
+  const usdGains = []
+
+  // input
+  const file2 = process.argv[4]
+  const subcommand = process.argv[5]
+
+  if (!file2) {
+    console.error('Please specify a trades file and a gains file')
+    process.exit(1)
+  }
+
+  const input2 = fixHeader(fs.readFileSync(file2, 'utf-8'))
+  const gains = Array.prototype.slice.call(await csvtojson().fromString(input2)) // indexed object; not a true array
+
+  const usdBuys = trades.filter(trade =>
+    trade.Type === 'Trade' &&
+    trade.CurBuy === 'USD' &&
+    trade.CurSell !== 'USDT' // ignore tether
+  )
+  usdBuys.forEach(trade => {
+    const tradeDay = day(trade['Trade Date'])
+
+    // Kraken Margin gains show up as trades for 0 USD
+    if (trade.CurSell === 'USD' && (+trade.Buy === 0 || +trade.Sell === 0)) {
+      usdGains.push({
+        "Amount": +trade.Sell,
+        "Currency": '-',
+        "Date Acquired": trade['Trade Date'],
+        "Date Sold": trade['Trade Date'],
+        "Short/Long": 'Short',
+        "Buy /Input at": 'Kraken',
+        "Sell /Output at": 'Kraken',
+        "Proceeds in USD": +trade.Buy,
+        "Cost Basis in USD": 0,
+        // positive Buy means we got USD for 0 (gain)
+        // poitive Sell means we lost USD for 0 (loss)
+        "Gain/Loss in USD": +trade.Buy || -trade.Sell,
+        "Comment": 'Margin'
+      })
+      return
+    }
+
+    const gain = gains.find(gain =>
+      day(gain['Date Sold']) === tradeDay &&
+      gain.Currency === trade.CurSell &&
+      +gain.Amount === +trade.Sell
+    )
+    if (gain) {
+      usdGains.push(gain)
+      // console.log("gain", gain)
+    }
+    else {
+      console.warn(`Unmatched USD Trade of ${trade.Sell} ${trade.CurSell} for ${trade.Buy} ${trade.CurBuy} on ${tradeDay}. Trade Group: ${trade['Trade Group']}, Comment: ${trade.Comment}`)
+      // console.log("trade", trade)
+    }
+  })
+
+  if (subcommand === 'summary') {
+    console.log("trades", trades.length)
+    console.log("gains", gains.length)
+    console.log("usdBuys", usdBuys.length)
+    console.log("usdGains", usdGains.length)
+  }
+  else {
+    console.log(toCSV(usdGains, ["Amount","Currency","Date Acquired","Date Sold","Short/Long","Buy /Input at","Sell /Output at","Proceeds in USD","Cost Basis in USD","Gain/Loss in USD"]))
+  }
+}
+
+/************************************************************************
+ * DEFAULT
+ ************************************************************************/
 else {
 
   if (command === 'sample') {
-    console.warn(`Sampling ${sampleSize} of ${numUnmatched} transactions.`)
+    console.warn(`Sampling ${sampleSize} of ${unmatched.length} transactions.`)
   }
 
   // prices
@@ -239,16 +331,7 @@ else {
   }
 
   // output
-  const csv = json2csv.parse(unmatched, {
-    delimiter: ',',
-    fields: ['Type','Buy','CurBuy','Sell','CurSell','Exchange','Trade Group',,,'Comment','Trade Date']
-  })
-  const csvLines = csv.split('\n')
-  const csvCorrected = [].concat(
-    csvLines[0].replace('CurBuy', 'Cur.').replace('CurSell', 'Cur.'),
-    csvLines.slice(1)
-  ).join('\n')
-  console.log(csvCorrected)
+  console.log(toCSV(unmatched))
 }
 
 })()
