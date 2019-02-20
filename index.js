@@ -230,6 +230,7 @@ if (command === 'summary') {
 else if (command === 'gains') {
 
   const usdGains = []
+  let usdSum = 0
 
   // input
   const file2 = process.argv[4]
@@ -278,6 +279,7 @@ else if (command === 'gains') {
     )
     if (gain) {
       usdGains.push(gain)
+      usdSum += parseFloat(gain['Gain/Loss in USD'].replace(',', ''))
       // console.log("gain", gain)
     }
     else {
@@ -286,15 +288,15 @@ else if (command === 'gains') {
     }
   })
 
-  if (subcommand === 'summary') {
-    console.log("trades", trades.length)
-    console.log("gains", gains.length)
-    console.log("usdBuys", usdBuys.length)
-    console.log("usdGains", usdGains.length)
-  }
-  else {
+  if (subcommand !== 'summary') {
     console.log(toCSV(usdGains, ["Amount","Currency","Date Acquired","Date Sold","Short/Long","Buy /Input at","Sell /Output at","Proceeds in USD","Cost Basis in USD","Gain/Loss in USD"]))
   }
+
+  console.info("trades", trades.length)
+  console.info("gains", gains.length)
+  console.info("usdBuys", usdBuys.length)
+  console.info("usdGains", usdGains.length)
+  console.info("usdSum", Math.round(usdSum * 100) / 100)
 }
 
 /************************************************************************
