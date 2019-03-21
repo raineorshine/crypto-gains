@@ -113,6 +113,7 @@ const price = memoize(async (from, to, time) => {
 
 const isUsdBuy = trade =>
   (trade.Comment === 'Shift Card' || // shift card (explicit)
+  (trade.Type === 'Withdrawal' && trade.Exchange === 'Coinbase' && !trade.Fee && trade.Sell < 4) || // shift card (infer)
   (trade.Type === 'Trade' && trade.CurBuy === 'USD')) && // USD Sale
   trade.CurSell !== 'USDT' // not tether
 
@@ -235,8 +236,8 @@ if (command === 'summary') {
   console.log('Lending:', lending.length)
   console.log('USD Buys:', usdBuys.length)
   console.log('Withdrawals:', withdrawals.length)
-  console.log('Matched:', matched.length)
-  console.log('Unmatched:', unmatched.length)
+  console.log('Matched Deposits:', matched.length)
+  console.log('Unmatched Deposits:', unmatched.length)
 }
 
 /************************************************************************
