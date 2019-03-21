@@ -71,8 +71,8 @@ const closeEnough = (tx1, tx2) => {
   //   tx1.CurBuy === 'BTC' ? 0.1
   //   tx1.CurBuy === 'ETH' ? 0.02
   //   : 0
-  return Math.abs(z(tx1.Buy) - z(tx2.Sell)) <= 0.2 &&
-         Math.abs(z(tx1.Sell) - z(tx2.Buy)) <= 0.2
+  return Math.abs(z(tx1.Buy) - z(tx2.Sell)) <= 0.02 &&
+         Math.abs(z(tx1.Sell) - z(tx2.Buy)) <= 0.02
 }
 
 // checks if a tx is too small to count based on a token-specific size
