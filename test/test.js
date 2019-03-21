@@ -4,19 +4,28 @@ const assert = require('assert')
 describe('stock', () => {
 
   describe('deposit', () => {
-    it('it should allow deposits', () => {
+    it('basic functionality', () => {
       const stock = Stock()
-      stock.deposit(1, 'BTC', 100, new Date())
-      stock.deposit(2, 'BTC', 500, new Date())
+      const date = new Date()
+      stock.deposit(1, 'BTC', 100, date)
+      stock.deposit(2, 'BTC', 500, date)
+    })
+
+    it('balance', () => {
+      const stock = Stock()
+      const date = new Date()
+      stock.deposit(1, 'BTC', 100, date)
+      stock.deposit(2, 'BTC', 500, date)
       assert.equal(stock.balance('BTC'), 3)
     })
   })
 
   describe('trade', () => {
-    it('trade should return a single lot when the full trade is available at the same cost basis', () => {
+    it('return a single lot when the full trade is available at the same cost basis', () => {
       const stock = Stock()
-      stock.deposit(1, 'BTC', 4000, new Date())
-      const exchanges = stock.trade(1, 'BTC', 10, 'ETH', new Date())
+      const date = new Date()
+      stock.deposit(1, 'BTC', 4000, date)
+      const exchanges = stock.trade(1, 'BTC', 10, 'ETH', date)
       assert.deepEqual(exchanges, [
         {
           buy: 10,
@@ -24,18 +33,19 @@ describe('stock', () => {
           sell: 1,
           sellCur: 'BTC',
           cost: 4000,
-          date: new Date(),
-          dateAcquired: new Date()
+          date: date,
+          dateAcquired: date
         }
       ])
       assert.equal(stock.balance('BTC'), 0)
       assert.equal(stock.balance('ETH'), 10)
     })
 
-    it('trade should calculate new cost basis proportionally to amount taken from lot', () => {
+    it('calculate new cost basis proportionally to amount taken from lot', () => {
       const stock = Stock()
-      stock.deposit(1, 'BTC', 4000, new Date())
-      const exchanges = stock.trade(0.5, 'BTC', 5, 'ETH', new Date())
+      const date = new Date()
+      stock.deposit(1, 'BTC', 4000, date)
+      const exchanges = stock.trade(0.5, 'BTC', 5, 'ETH', date)
       assert.deepEqual(exchanges, [
         {
           buy: 5,
@@ -43,19 +53,20 @@ describe('stock', () => {
           sell: 0.5,
           sellCur: 'BTC',
           cost: 2000,
-          date: new Date(),
-          dateAcquired: new Date()
+          date: date,
+          dateAcquired: date
         }
       ])
       assert.equal(stock.balance('BTC'), 0.5)
       assert.equal(stock.balance('ETH'), 5)
     })
 
-    it('trade should return multiple lots taken FIFO when trading on multiple purchases', () => {
+    it('return multiple lots taken FIFO when trading on multiple purchases', () => {
       const stock = Stock()
-      stock.deposit(10, 'BTC', 30000, new Date())
-      stock.deposit(10, 'BTC', 40000, new Date())
-      const exchanges = stock.trade(15, 'BTC', 150, 'ETH', new Date())
+      const date = new Date()
+      stock.deposit(10, 'BTC', 30000, date)
+      stock.deposit(10, 'BTC', 40000, date)
+      const exchanges = stock.trade(15, 'BTC', 150, 'ETH', date)
       assert.deepEqual(exchanges, [
         {
           buy: 100,
@@ -63,8 +74,8 @@ describe('stock', () => {
           sell: 10,
           sellCur: 'BTC',
           cost: 30000,
-          date: new Date(),
-          dateAcquired: new Date()
+          date: date,
+          dateAcquired: date
         },
         {
           buy: 50,
@@ -72,69 +83,86 @@ describe('stock', () => {
           sell: 5,
           sellCur: 'BTC',
           cost: 20000,
-          date: new Date(),
-          dateAcquired: new Date()
+          date: date,
+          dateAcquired: date
         },
       ])
       assert.equal(stock.balance('BTC'), 5)
       assert.equal(stock.balance('ETH'), 150)
     })
 
-    it('trade should add new lot', () => {
+    it('add new lot', () => {
       const stock = Stock()
-      stock.deposit(1, 'BTC', 4000, new Date())
-      stock.trade(1, 'BTC', 10, 'ETH', new Date())
-      stock.withdraw(10, 'ETH')
+      const date = new Date()
+      stock.deposit(1, 'BTC', 4000, date)
+      stock.trade(1, 'BTC', 10, 'ETH', date)
       assert.equal(stock.balance('BTC'), 0)
-      assert.equal(stock.balance('ETH'), 0)
+      assert.equal(stock.balance('ETH'), 10)
     })
 
   })
 
   describe('withdraw', () => {
-    it('withdraw should work', () => {
+    it('basic functionality', () => {
       const stock = Stock()
-      stock.deposit(10, 'BTC', 40000, new Date())
-      const withdrawals = stock.withdraw(1, 'BTC', new Date())
+      const date = new Date()
+      stock.deposit(10, 'BTC', 40000, date)
+      const withdrawals = stock.withdraw(1, 'BTC', date)
       assert.deepEqual(withdrawals, [
         {
           amount: 1,
           cur: 'BTC',
           cost: 4000,
-          date: new Date()
+          date: date
         }
       ])
-      assert.equal(stock.balance('BTC'), 9)
     })
 
-    it('withdraw should error if not enough purchases', () => {
+    it('do not debit from stock', () => {
       const stock = Stock()
+      const date = new Date()
+      stock.deposit(10, 'BTC', 40000, date)
+      const withdrawals = stock.withdraw(1, 'BTC', date)
+      assert.deepEqual(withdrawals, [
+        {
+          amount: 1,
+          cur: 'BTC',
+          cost: 4000,
+          date: date
+        }
+      ])
+      assert.equal(stock.balance('BTC'), 10)
+    })
+
+    it('error if not enough purchases', () => {
+      const stock = Stock()
+      const date = new Date()
       let error
-      stock.deposit(10, 'BTC', 40000, new Date())
-      const errorF = () => stock.withdraw(11, 'BTC', new Date())
+      stock.deposit(10, 'BTC', 40000, date)
+      const errorF = () => stock.withdraw(11, 'BTC', date)
       assert.throws(errorF)
     })
 
-    it('withdraw should work across multiple purchases', () => {
+    it('work across multiple purchases', () => {
       const stock = Stock()
-      stock.deposit(10, 'BTC', 30000, new Date())
-      stock.deposit(10, 'BTC', 40000, new Date())
-      const withdrawals = stock.withdraw(15, 'BTC', new Date())
+      const date = new Date()
+      stock.deposit(10, 'BTC', 30000, date)
+      stock.deposit(10, 'BTC', 40000, date)
+      const withdrawals = stock.withdraw(15, 'BTC', date)
       assert.deepEqual(withdrawals, [
         {
           amount: 10,
           cur: 'BTC',
           cost: 30000,
-          date: new Date()
+          date: date
         },
         {
           amount: 5,
           cur: 'BTC',
           cost: 20000,
-          date: new Date()
+          date: date
         },
       ])
-      assert.equal(stock.balance('BTC'), 5)
     })
   })
 

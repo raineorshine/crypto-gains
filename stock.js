@@ -13,39 +13,44 @@ module.exports = (() => {
     lots.push({ amount, cur, cost, date })
   }
 
+  // assume withdraw is not a sale; maintain cost basis
+  // validates available purchases
   const withdraw = (amount, cur, date) => {
     let pending = amount
-    const exchanges = []
+    let lotIndex = 0
+    const exchangeLots = []
+
+    // get all lots of the withdawal currency
+    const curLots = lots.filter(lot => lot.cur === cur)
+
     while (pending > 0) {
-      const lot = next(cur)
-      let lotDebit, cost
+      const lot = curLots[lotIndex++]
       if (!lot) throw new Error(`withdraw: No available purchase for ${amount} ${cur} on ${date} (${amount - pending} ${cur} found)`)
+
+      let amount, cost
 
       // lot has a larger supply than is needed
       if (lot.amount > pending) {
-        lotDebit = pending
+        amount = pending
         cost = lot.cost * (pending / lot.amount)
-        lot.amount -= pending
-        lot.cost -= cost
         pending = 0
       }
       // lot is not big enough
       else {
-        remove(lot)
-        lotDebit = lot.amount
+        amount = lot.amount
         cost = lot.cost
         pending -= lot.amount
       }
 
-      exchanges.push({
-        amount: lotDebit,
+      exchangeLots.push({
+        amount,
         cur,
         cost,
         date: lot.date
       })
     }
 
-    return exchanges
+    return exchangeLots
   }
 
   const trade = (sell, sellCur, buy, buyCur, date) => {
