@@ -8,7 +8,6 @@ const ProgressBar = require('progress')
 const stock = require('./stock.js')()
 
 const exchange = 'cccagg' // cryptocompare aggregrate
-const sampleSize = Infinity
 
 // replace duplicate Cur. with CurBuy, CurSell, CurFee
 const fixHeader = input => {
@@ -212,8 +211,9 @@ const groupTransactions = trades => {
 
 const file = process.argv[2]
 const command = process.argv[3]
+const sampleSize = process.argv[4] || Infinity
 
-if (!file) {
+if (!file || !command) {
   console.error('Invalid usage. \n\nUsage: \nnode index.js [command] [trades.csv]')
   process.exit(1)
 }
@@ -323,6 +323,7 @@ else if (command === 'prices') {
 
   const numRequests = Math.min(unmatchedRequests.length, sampleSize)
   const bar = new ProgressBar(':current/:total :percent :etas (:token1 errors)', { total: numRequests })
+  bar.render()
   for (let i=0; i<numRequests; i++) {
     const result = await unmatchedRequests[i]()
     if (!result.error) {
