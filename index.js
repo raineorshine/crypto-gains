@@ -4,6 +4,7 @@ const json2csv = require('json2csv')
 const got = require('got')
 const secure = require('./secure.json')
 const memoize = require('p-memoize')
+const ProgressBar = require('progress')
 const stock = require('./stock.js')()
 
 const exchange = 'cccagg' // cryptocompare aggregrate
@@ -34,6 +35,19 @@ const toCSV = (trades, fields=['Type','Buy','CurBuy','Sell','CurSell','Exchange'
   ).join('\n')
 }
 
+// group transactions by day
+const groupByDay = trades => {
+  const txsByDay = {}
+  for (let i=0; i<trades.length; i++) {
+    const key = day(trades[i]['Trade Date'])
+    if (!(key in txsByDay)) {
+      txsByDay[key] = []
+    }
+    txsByDay[key].push(trades[i])
+  }
+  return txsByDay
+}
+
 // get the day of the date
 const day = date => date.split(' ')[0]
 
@@ -62,14 +76,14 @@ const closeEnough = (tx1, tx2) => {
 }
 
 // checks if a tx is too small to count based on a token-specific size
-const tooSmallToCount = tx => {
-  const tooSmallAmount =
-    tx.CurBuy === 'BTC' ? 0.0001 :
-    tx.CurBuy === 'ETH' ? 0.001 :
-    0.005
-  return z(tx.Buy) < tooSmallAmount &&
-         z(tx.Sell) < tooSmallAmount
-}
+// const tooSmallToCount = tx => {
+//   const tooSmallAmount =
+//     tx.CurBuy === 'BTC' ? 0.0001 :
+//     tx.CurBuy === 'ETH' ? 0.001 :
+//     0.005
+//   return z(tx.Buy) < tooSmallAmount &&
+//          z(tx.Sell) < tooSmallAmount
+// }
 
 // checks if two transactions are a Deposit/Withdrawal match
 const match = (tx1, tx2) =>
@@ -97,16 +111,109 @@ const price = memoize(async (from, to, time) => {
   }
 })
 
+const isUsdBuy = trade =>
+  (trade.Comment === 'Shift Card' || // shift card (explicit)
+  (trade.Type === 'Trade' && trade.CurBuy === 'USD')) && // USD Sale
+  trade.CurSell !== 'USDT' // not tether
+
+// group transactions into several broad categories
+// match same-day withdrawals and deposits
+const groupTransactions = trades => {
+  const matched = []
+  const unmatched = []
+  const usdBuys = []
+  const withdrawals = []
+  const margin = []
+  const lending = []
+  const unmatchedRequests = [] // thunks for prices
+
+  const txsByDay = groupByDay(trades)
+
+  // loop through each day
+  for (let key in txsByDay) {
+    const group = txsByDay[key]
+
+    // loop through each transaction
+    // label loop so that matching
+    txLoop:
+    for (let i in group) {
+      const tx1 = group[i]
+
+      if(/lending/i.test(tx1['Trade Group']) || /lending/i.test(tx1.Comment)) {
+        lending.push(tx1)
+      }
+      else if(/margin/i.test(tx1['Trade Group']) || /margin/i.test(tx1.Comment)) {
+        margin.push(tx1)
+      }
+      else if(isUsdBuy(tx1)) {
+        usdBuys.push(tx1)
+      }
+      else if (tx1.Type === 'Withdrawal') {
+        withdrawals.push(tx1)
+      }
+      else if (tx1.Type === 'Deposit') {
+
+        // loop through each other transaction on the same day to find a matching withdrawal
+        for (let i2 in group) {
+          const tx2 = group[i2]
+          // match negligible transactions
+          if(match(tx1, tx2)) {
+            matched.push(tx1)
+            tx1.match = tx2
+            continue txLoop // jump to next tx
+          }
+        }
+
+        // otherwise we have an unmatched transaction
+        delete tx1.field1
+
+        const newTx = Object.assign({}, tx1, {
+          Type: 'Income',
+          Comment: 'Cost Basis',
+          Group: ''
+        })
+
+        if (command === 'prices') {
+          unmatchedRequests.push(async () => {
+            let p, err
+            try {
+              // per-day memoization
+              p = await price(tx1.CurBuy, 'USD', day(normalDate(tx1)))
+            }
+            catch (e) {
+              err = e.message
+            }
+
+            return {
+              tx: Object.assign({}, newTx, { Price: p }),
+              error: err
+            }
+          })
+        }
+        // ignore txs beyond sampleSize
+        else if (command !== 'sample' || unmatched.length < sampleSize) {
+          unmatched.push(newTx)
+        }
+        else {
+          throw new Error('I do not know how to handle this transaction: \n\n' + JSON.stringify(tx1))
+        }
+      }
+    }
+  }
+
+  return { matched, unmatched, usdBuys, withdrawals, margin, lending, unmatchedRequests }
+}
+
 
 /****************************************************************
 * RUN
 *****************************************************************/
 
-const command = process.argv[2]
-const file = process.argv[3]
+const file = process.argv[2]
+const command = process.argv[3]
 
 if (!file) {
-  console.error('Please specify a file')
+  console.error('Invalid usage. \n\nUsage: \nnode index.js [command] [trades.csv]')
   process.exit(1)
 }
 
@@ -115,109 +222,18 @@ if (!file) {
 (async () => {
 
 const input = fixHeader(fs.readFileSync(file, 'utf-8'))
-const trades = Array.prototype.slice.call(await csvtojson().fromString(input)) // indexed object; not a true array
+const trades = Array.prototype.slice.call(await csvtojson().fromString(input)) // convert to true array
 
-// index by day
-const txsByDay = {}
-for (let i=0; i<trades.length; i++) {
-  const key = day(trades[i]['Trade Date'])
-  if (!(key in txsByDay)) {
-    txsByDay[key] = []
-  }
-  txsByDay[key].push(trades[i])
-}
-
-// separate out d&w that match on a given day
-const matched = []
-const withdrawals = []
-const unmatchedRequests = [] // thunks for prices
-const unmatched = []
-const margin = []
-const lending = []
-
-// loop through each day
-start:
-for (let key in txsByDay) {
-  const group = txsByDay[key]
-
-  // loop through each transaction
-  txLoop:
-  for (let i in group) {
-    const tx1 = group[i]
-
-    // if (tx1['Trade Group'] === 'Lending') {
-    //   console.log("tx1", tx1)
-    // }
-
-    // ignore lending
-    if(/lending/i.test(tx1['Trade Group']) || /lending/i.test(tx1.Comment)) {
-      lending.push(tx1)
-      continue
-    }
-    // ignore margin
-    else if(/margin/i.test(tx1['Trade Group']) || /margin/i.test(tx1.Comment)) {
-      margin.push(tx1)
-      continue
-    }
-    // disable tooSmallToCount as there are not that many total deposits
-    else if (tx1.Type !== 'Deposit' || tooSmallToCount(tx1) || tx1.CurBuy === 'USD') {
-      withdrawals.push(tx1)
-      continue
-    }
-
-    // loop through each other transaction
-    for (let i2 in group) {
-      const tx2 = group[i2]
-      // match negligible transactions
-      if(match(tx1, tx2)) {
-        matched.push(tx1)
-        tx1.match = tx2
-        continue txLoop // jump to next tx
-      }
-    }
-
-    // otherwise we have an unmatched transaction
-    delete tx1.field1
-
-    const newTx = Object.assign({}, tx1, {
-      Type: 'Income',
-      Comment: 'Cost Basis',
-      Group: ''
-    })
-
-    if (command === 'prices') {
-      unmatchedRequests.push(async () => {
-        let p, err
-        try {
-          // per-day memoization
-          p = await price(tx1.CurBuy, 'USD', day(normalDate(tx1)))
-        }
-        catch (e) {
-          err = e.message
-        }
-
-        return {
-          tx: Object.assign({}, newTx, { Price: p }),
-          error: err
-        }
-      })
-    }
-    // ignore txs beyond sampleSize
-    else if (command !== 'sample' || unmatched.length < sampleSize) {
-      unmatched.push(newTx)
-    }
-  }
-
-}
+const { matched, unmatched, usdBuys, withdrawals, margin, lending, unmatchedRequests } = groupTransactions(trades)
 
 /************************************************************************
  * SUMMARY
  ************************************************************************/
 if (command === 'summary') {
   console.log('Transactions:', trades.length)
-  console.log('Total Days:', Object.keys(txsByDay).length)
   console.log('Margin Trades:', margin.length)
   console.log('Lending:', lending.length)
+  console.log('USD Buys:', usdBuys.length)
   console.log('Withdrawals:', withdrawals.length)
   console.log('Matched:', matched.length)
   console.log('Unmatched:', unmatched.length)
@@ -244,11 +260,6 @@ else if (command === 'gains') {
   const input2 = fixHeader(fs.readFileSync(file2, 'utf-8'))
   const gains = Array.prototype.slice.call(await csvtojson().fromString(input2)) // indexed object; not a true array
 
-  const usdBuys = trades.filter(trade =>
-    (trade.Comment === 'Shift Card' || // shift card
-    (trade.Type === 'Trade' && trade.CurBuy === 'USD')) && // USD Sale
-    trade.CurSell !== 'USDT' // ignore tether
-  )
   usdBuys.forEach(trade => {
     const tradeDay = day(trade['Trade Date'])
 
@@ -304,37 +315,26 @@ else if (command === 'gains') {
   console.warn("usdSum", Math.round(usdSum * 100) / 100)
 }
 
-/************************************************************************
- * DEFAULT
- ************************************************************************/
-else {
+//  prices
+else if (command === 'prices') {
 
-  if (command === 'sample') {
-    console.warn(`Sampling ${sampleSize} of ${unmatched.length} transactions.`)
+  const errors = []
+
+  const numRequests = Math.min(unmatchedRequests.length, sampleSize)
+  const bar = new ProgressBar(':current/:total :percent :etas (:token1 errors)', { total: numRequests })
+  for (let i=0; i<numRequests; i++) {
+    const result = await unmatchedRequests[i]()
+    if (!result.error) {
+      unmatched.push(result.tx)
+    }
+    else {
+      errors.push(result.error)
+    }
+    bar.tick({ token1: errors.length })
   }
 
-  // prices
-  if (command === 'prices') {
-    const ProgressBar = require('progress')
-
-    const errors = []
-
-    const numRequests = Math.min(unmatchedRequests.length, sampleSize)
-    const bar = new ProgressBar(':current/:total :percent :etas (:token1 errors)', { total: numRequests })
-    for (let i=0; i<numRequests; i++) {
-      const result = await unmatchedRequests[i]()
-      if (!result.error) {
-        unmatched.push(result.tx)
-      }
-      else {
-        errors.push(result.error)
-      }
-      bar.tick({ token1: errors.length })
-    }
-
-    if (errors.length > 0) {
-      console.warn(errors.join('\n'))
-    }
+  if (errors.length > 0) {
+    console.warn(errors.join('\n'))
   }
 
   // output
