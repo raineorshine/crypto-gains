@@ -245,6 +245,7 @@ const rawData = Array.prototype.slice.call(await csvtojson().fromString(input)) 
 
 const { matched, unmatched, income, usdBuys, lost, spend, withdrawals, tradeTxs, margin, lending, unmatchedRequests } = groupTransactions(rawData)
 
+
 /************************************************************************
  * SUMMARY
  ************************************************************************/
@@ -262,83 +263,10 @@ if (command === 'summary') {
   console.log('Unmatched Deposits:', unmatched.length)
 }
 
+
 /************************************************************************
- * GAINS
+ * COST BASIS
  ************************************************************************/
-else if (command === 'gains') {
-
-  const usdGains = []
-  const shift = []
-  let usdSum = 0
-
-  // input
-  const file2 = process.argv[4]
-  const subcommand = process.argv[5]
-
-  if (!file2) {
-    console.error('Please specify a transactions file and a gains file')
-    process.exit(1)
-  }
-
-  const input2 = fixHeader(fs.readFileSync(file2, 'utf-8'))
-  const gains = Array.prototype.slice.call(await csvtojson().fromString(input2)) // indexed object; not a true array
-
-  usdBuys.forEach(trade => {
-    const tradeDay = day(trade['Trade Date'])
-
-    if (trade.Comment === 'Shift Card') {
-      shift.push(trade)
-    }
-
-    // Kraken Margin gains show up as trades for 0 USD
-    if (trade.CurSell === 'USD' && (+trade.Buy === 0 || +trade.Sell === 0)) {
-      usdGains.push({
-        "Amount": +trade.Sell,
-        "Currency": '-',
-        "Date Acquired": trade['Trade Date'],
-        "Date Sold": trade['Trade Date'],
-        "Short/Long": 'Short',
-        "Buy /Input at": 'Kraken',
-        "Sell /Output at": 'Kraken',
-        "Proceeds in USD": +trade.Buy,
-        "Cost Basis in USD": 0,
-        // positive Buy means we got USD for 0 (gain)
-        // poitive Sell means we lost USD for 0 (loss)
-        "Gain/Loss in USD": +trade.Buy || -trade.Sell,
-        "Comment": 'Margin'
-      })
-      return
-    }
-
-    const gain = gains.find(gain =>
-      day(gain['Date Sold']) === tradeDay &&
-      gain.Currency === trade.CurSell &&
-      +gain.Amount === +trade.Sell
-    )
-
-    if (gain) {
-      usdGains.push(gain)
-      usdSum += parseFloat(gain['Gain/Loss in USD'].replace(',', ''))
-      // console.log("gain", gain)
-    }
-    else {
-      console.warn(`Unmatched USD Trade of ${trade.Sell} ${trade.CurSell} for ${trade.Buy} ${trade.CurBuy} on ${tradeDay}. Trade Group: ${trade['Trade Group']}, Comment: ${trade.Comment}`)
-    }
-  })
-
-  if (subcommand !== 'summary') {
-    console.log(toCSV(usdGains, ["Amount","Currency","Date Acquired","Date Sold","Short/Long","Buy /Input at","Sell /Output at","Proceeds in USD","Cost Basis in USD","Gain/Loss in USD"]))
-  }
-
-  console.warn("trades", trades.length)
-  console.warn("shift", shift.length)
-  console.warn("gains", gains.length)
-  console.warn("usdBuys", usdBuys.length)
-  console.warn("usdGains", usdGains.length)
-  console.warn("usdSum", Math.round(usdSum * 100) / 100)
-}
-
-// costbasis
 else if (command === 'costbasis') {
 
   const n = Math.min(rawData.length, sampleSize)
