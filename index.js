@@ -121,11 +121,15 @@ const isUsdBuy = trade =>
 const groupTransactions = trades => {
   const matched = []
   const unmatched = []
+  const income = []
   const usdBuys = []
   const withdrawals = []
   const margin = []
   const lending = []
   const unmatchedRequests = [] // thunks for prices
+  const tradeTxs = []
+  const lost = []
+  const spend = []
 
   const txsByDay = groupByDay(trades)
 
@@ -148,15 +152,27 @@ const groupTransactions = trades => {
       else if(isUsdBuy(tx1)) {
         usdBuys.push(tx1)
       }
+      else if(tx1.Type === 'Trade') {
+        tradeTxs.push(tx1)
+      }
+      else if(tx1.Type === 'Income') {
+        income.push(tx1)
+      }
       else if (tx1.Type === 'Withdrawal') {
         withdrawals.push(tx1)
       }
+      else if (tx1.Type === 'Lost') {
+        lost.push(tx1)
+      }
+      else if (tx1.Type === 'Spend') {
+        spend.push(tx1)
+      }
+      // try to match the deposit to a same-day withdrawal
       else if (tx1.Type === 'Deposit') {
 
         // loop through each other transaction on the same day to find a matching withdrawal
         for (let i2 in group) {
           const tx2 = group[i2]
-          // match negligible transactions
           if(match(tx1, tx2)) {
             matched.push(tx1)
             tx1.match = tx2
@@ -190,18 +206,18 @@ const groupTransactions = trades => {
             }
           })
         }
-        // ignore txs beyond sampleSize
         else if (command !== 'sample' || unmatched.length < sampleSize) {
+        // ignore txs beyond sampleSize
           unmatched.push(newTx)
         }
-        else {
-          throw new Error('I do not know how to handle this transaction: \n\n' + JSON.stringify(tx1))
-        }
+      }
+      else {
+        throw new Error('I do not know how to handle this transaction: \n\n' + JSON.stringify(tx1))
       }
     }
   }
 
-  return { matched, unmatched, usdBuys, withdrawals, margin, lending, unmatchedRequests }
+  return { matched, unmatched, income, usdBuys, withdrawals, tradeTxs, lost, spend, margin, lending, unmatchedRequests }
 }
 
 
@@ -225,7 +241,7 @@ if (!file || !command) {
 const input = fixHeader(fs.readFileSync(file, 'utf-8'))
 const trades = Array.prototype.slice.call(await csvtojson().fromString(input)) // convert to true array
 
-const { matched, unmatched, usdBuys, withdrawals, margin, lending, unmatchedRequests } = groupTransactions(trades)
+const { matched, unmatched, income, usdBuys, lost, spend, withdrawals, margin, lending, unmatchedRequests } = groupTransactions(trades)
 
 /************************************************************************
  * SUMMARY
@@ -235,6 +251,10 @@ if (command === 'summary') {
   console.log('Margin Trades:', margin.length)
   console.log('Lending:', lending.length)
   console.log('USD Buys:', usdBuys.length)
+  console.log('Income:', income.length)
+  console.log('Lost:', lost.length)
+  console.log('Spend:', spend.length)
+  console.log('Trades:', withdrawals.length)
   console.log('Withdrawals:', withdrawals.length)
   console.log('Matched Deposits:', matched.length)
   console.log('Unmatched Deposits:', unmatched.length)
