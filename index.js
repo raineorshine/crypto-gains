@@ -144,7 +144,9 @@ const calculate = async txs => {
 
   let sales = []
   let trades = []
-  const errors = []
+  const noAvailablePurchases = []
+  const noMatchingWithdrawals = []
+  const priceErrors = []
 
   const txsByDay = groupByDay(txs)
 
@@ -183,7 +185,7 @@ const calculate = async txs => {
         catch (e) {
           if (e instanceof Stock.NoAvailablePurchaseError) {
             console.error(e.message)
-            errors.push(e)
+            noAvailablePurchases.push(e)
           }
           else {
             throw e
@@ -205,7 +207,7 @@ const calculate = async txs => {
         catch (e) {
           if (e instanceof Stock.NoAvailablePurchaseError) {
             console.error('Error making trade:', e.message)
-            errors.push(e)
+            noAvailablePurchases.push(e)
           }
           else {
             throw e
@@ -223,7 +225,7 @@ const calculate = async txs => {
         }
         catch(e) {
             console.error(`Error fetching price`)
-            errors.push(tx)
+            priceErrors.push(tx)
           }
         stock.deposit(+tx.Buy, tx.CurBuy, tx.Buy * p, tx['Trade Date'])
       }
@@ -239,7 +241,9 @@ const calculate = async txs => {
         // otherwise we have an unmatched transaction and need to fallback to the day-of price
         // and add it to the stock
         else {
-          console.warn(`WARNING: No matching withdrawal for deposit of ${tx.Buy} ${tx.CurBuy} on ${tx['Trade Date']}. Using historical price.`)
+          const message = `WARNING: No matching withdrawal for deposit of ${tx.Buy} ${tx.CurBuy} on ${tx['Trade Date']}. Using historical price.`
+          console.warn(message)
+          noMatchingWithdrawals.push(message)
 
           let p
           try {
@@ -247,7 +251,7 @@ const calculate = async txs => {
             p = await price(tx.CurBuy, 'USD', day(normalDate(tx)))
           }
           catch (e) {
-            errors.push(e.message)
+            priceErrors.push(e.message)
           }
 
           const newTx = Object.assign({}, tx, {
@@ -281,7 +285,7 @@ const calculate = async txs => {
     }
   }
 
-  return { matched, unmatched, income, usdBuys, withdrawals, tradeTxs, lost, spend, margin, lending, sales, trades, errors }
+  return { matched, unmatched, income, usdBuys, withdrawals, tradeTxs, lost, spend, margin, lending, sales, trades, noAvailablePurchases, noMatchingWithdrawals, priceErrors }
 }
 
 
@@ -305,7 +309,7 @@ if (!file) {
 const input = fixHeader(fs.readFileSync(file, 'utf-8'))
 const txs = Array.prototype.slice.call(await csvtojson().fromString(input)) // convert to true array
 
-const { matched, unmatched, income, usdBuys, lost, spend, withdrawals, tradeTxs, margin, lending, sales, trades, errors } = await calculate(txs)
+const { matched, unmatched, income, usdBuys, lost, spend, withdrawals, tradeTxs, margin, lending, sales, trades, noAvailablePurchases, noMatchingWithdrawals, priceErrors } = await calculate(txs)
 
 
 /************************************************************************
@@ -338,8 +342,12 @@ if (command === 'summary') {
   console.log(`SUM: ${stockSum}`)
   console.log('')
 
-  console.error('ERRORS')
-  errors.forEach(err => console.error(err.message))
+  console.log('ERRORS')
+  console.log('No available purchase: ', noAvailablePurchases.length)
+  console.log('No matching withdrawals: ', noMatchingWithdrawals.length)
+  console.log('Price errors: ', priceErrors.length)
+  console.log('')
+  // noAvailablePurchases.forEach(err => console.error(err.message))
 }
 
 })()
