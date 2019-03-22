@@ -130,6 +130,7 @@ const calculate = async txs => {
   const unmatched = []
   const income = []
   const usdBuys = []
+  const usdDeposits = []
   const withdrawals = []
   const margin = []
   const lending = []
@@ -230,7 +231,13 @@ const calculate = async txs => {
       else if (tx.Type === 'Deposit') {
 
         // try to match the deposit to a same-day withdrawal
-        if (findMatchingWithdrawal(tx, group)) {
+        if (tx.CurBuy === 'USD') {
+          usdDeposits.push(tx)
+
+          // update cost basis
+          stock.deposit(+tx.Buy, 'USD', tx.Buy, tx['Trade Date'])
+        }
+        else if (findMatchingWithdrawal(tx, group)) {
           matched.push(tx)
         }
         // otherwise we have an unmatched transaction and need to fallback to the day-of price
@@ -280,7 +287,7 @@ const calculate = async txs => {
     }
   }
 
-  return { matched, unmatched, income, usdBuys, withdrawals, tradeTxs, lost, spend, margin, lending, sales, trades, noAvailablePurchases, noMatchingWithdrawals, priceErrors }
+  return { matched, unmatched, income, usdBuys, usdDeposits, withdrawals, tradeTxs, lost, spend, margin, lending, sales, trades, noAvailablePurchases, noMatchingWithdrawals, priceErrors }
 }
 
 
@@ -304,7 +311,7 @@ if (!file) {
 const input = fixHeader(fs.readFileSync(file, 'utf-8'))
 const txs = Array.prototype.slice.call(await csvtojson().fromString(input)) // convert to true array
 
-const { matched, unmatched, income, usdBuys, lost, spend, withdrawals, tradeTxs, margin, lending, sales, trades, noAvailablePurchases, noMatchingWithdrawals, priceErrors } = await calculate(txs)
+const { matched, unmatched, income, usdBuys, usdDeposits, lost, spend, withdrawals, tradeTxs, margin, lending, sales, trades, noAvailablePurchases, noMatchingWithdrawals, priceErrors } = await calculate(txs)
 
 
 /************************************************************************
@@ -312,13 +319,14 @@ const { matched, unmatched, income, usdBuys, lost, spend, withdrawals, tradeTxs,
  ************************************************************************/
 if (command === 'summary') {
 
-  const sum = withdrawals.length + matched.length + unmatched.length + usdBuys.length + income.length + tradeTxs.length + margin.length + lending.length + lost.length + spend.length
+  const sum = withdrawals.length + matched.length + unmatched.length + usdBuys.length + usdDeposits.length + income.length + tradeTxs.length + margin.length + lending.length + lost.length + spend.length
 
   console.log('')
   console.log('Withdrawals:', withdrawals.length)
   console.log('Matched Deposits:', matched.length)
   console.log('Unmatched Deposits:', unmatched.length)
   console.log('USD Buys:', usdBuys.length)
+  console.log('USD Deposits:', usdDeposits.length)
   console.log('Income:', income.length)
   console.log('Trades:', tradeTxs.length)
   console.log('Margin Trades:', margin.length)
