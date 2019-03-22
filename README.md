@@ -1,6 +1,6 @@
 Generate missing cost basis for unknown crypto deposits from [day-of historical price](https://min-api.cryptocompare.com/documentation?key=Historical&cat=dataPriceHistorical).
 
-    $ node index.js data.csv
+    $ node index.js data.csv costbasis
 
     402/402 100% 0.0s (0 errors)
     Type  Buy Cur.  Sell  Cur. Exchange  Trade Group Comment Trade Date
@@ -10,7 +10,7 @@ Generate missing cost basis for unknown crypto deposits from [day-of historical 
     "Income","0.63300000","BTC","-","","Kraken","Kraken Ledger",,,"Cost Basis","18.06.2016 15:14"
     ...
 
-    $ node index.js summary data.csv
+    $ node index.js data.csv summary
 
     Transactions:  4879
     Total Days:  791
@@ -20,7 +20,7 @@ Generate missing cost basis for unknown crypto deposits from [day-of historical 
 
 Calculate prices from cryptocompare aggregrate (cccagg):
 
-    $ node index.js prices data.csv
+    $ node index.js data.csv prices
 
     402/402 100% 0.0s (0 errors)
     Type  Buy Cur.  Sell  Cur. Exchange  Trade Group Comment Trade Date  Price
@@ -57,10 +57,6 @@ Use `all.js` to calculate prices and totals (amount * price) for every transacti
     "Withdrawal","-","","1.56021918","BTC",2766.49,4316.330759278199,"Coinbase","",,,"","30.07.2017 10:24"
     "Withdrawal","-","","1.51479930","ETH",610.56,924.8758606079999,"Coinbase","",,,"","15.03.2018 07:41"
     "Withdrawal","-","","1.47100000","BTC",670.02,985.59942,"Coinbase","",,,"","30.06.2016 20:37"
-
-USD Gains only
-
-    $ node gains trades.csv gains.csv
 
 ## Installation
 

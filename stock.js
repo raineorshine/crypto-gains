@@ -1,4 +1,4 @@
-module.exports = (() => {
+const Stock = () => {
 
   const lots = []
 
@@ -25,25 +25,25 @@ module.exports = (() => {
 
     while (pending > 0) {
       const lot = curLots[lotIndex++]
-      if (!lot) throw new Error(`withdraw: No available purchase for ${amount} ${cur} on ${date} (${amount - pending} ${cur} found)`)
+      if (!lot) throw new NoAvailablePurchaseError(`withdraw: No available purchase for ${amount} ${cur} on ${date} (${amount - pending} ${cur} found)`)
 
-      let amount, cost
+      let lotDebit, cost
 
       // lot has a larger supply than is needed
       if (lot.amount > pending) {
-        amount = pending
+        lotDebit = pending
         cost = lot.cost * (pending / lot.amount)
         pending = 0
       }
       // lot is not big enough
       else {
-        amount = lot.amount
+        lotDebit = lot.amount
         cost = lot.cost
         pending -= lot.amount
       }
 
       exchangeLots.push({
-        amount,
+        amount: lotDebit,
         cur,
         cost,
         date: lot.date
@@ -69,7 +69,7 @@ module.exports = (() => {
       // non-USD
       else {
         lot = next(sellCur)
-        if (!lot) throw new Error(`trade: No available purchase for ${sell} ${sellCur} trade on ${date} (${sell - pending} ${sellCur} found)`)
+        if (!lot) throw new NoAvailablePurchaseError(`trade: No available purchase for ${sell} ${sellCur} trade on ${date} (${sell - pending} ${sellCur} found)`)
 
         // lot has a larger supply than is needed
         if (lot.amount > pending) {
@@ -112,4 +112,10 @@ module.exports = (() => {
   }
 
   return { balance, deposit, withdraw, trade }
-})
+}
+
+function NoAvailablePurchaseError(msg) { this.message = msg }
+NoAvailablePurchaseError.prototype = new Error()
+Stock.NoAvailablePurchaseError = NoAvailablePurchaseError
+
+module.exports = Stock

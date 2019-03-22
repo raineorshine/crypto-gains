@@ -5,9 +5,11 @@ const got = require('got')
 const secure = require('./secure.json')
 const memoize = require('p-memoize')
 const ProgressBar = require('progress')
-const stock = require('./stock.js')()
+const Stock = require('./stock.js')
+const stock = Stock()
 
 const exchange = 'cccagg' // cryptocompare aggregrate
+const mockPrice = true
 
 // replace duplicate Cur. with CurBuy, CurSell, CurFee
 const fixHeader = input => {
@@ -91,7 +93,7 @@ const match = (tx1, tx2) =>
   tx1.CurSell === tx2.CurBuy &&
   closeEnough(tx1, tx2)
 
-const price = memoize(async (from, to, time) => {
+const price = mockPrice ? async () => 0 : memoize(async (from, to, time) => {
   const url = `https://min-api.cryptocompare.com/data/pricehistorical?fsym=${from}&tsyms=${to}&ts=${(new Date(time)).getTime()/1000}&e=${exchange}&api_key=${secure.cryptoCompareApiKey}&extraParams=cost-basis-filler`
   const data = JSON.parse((await got(url))
   .body)
@@ -230,7 +232,7 @@ const command = process.argv[3]
 const sampleSize = process.argv[4] || Infinity
 
 if (!file || !command) {
-  console.error('Invalid usage. \n\nUsage: \nnode index.js [command] [trades.csv]')
+  console.error('Invalid usage. \n\nUsage: \nnode index.js [command] [transactions.csv]')
   process.exit(1)
 }
 
@@ -239,22 +241,22 @@ if (!file || !command) {
 (async () => {
 
 const input = fixHeader(fs.readFileSync(file, 'utf-8'))
-const trades = Array.prototype.slice.call(await csvtojson().fromString(input)) // convert to true array
+const rawData = Array.prototype.slice.call(await csvtojson().fromString(input)) // convert to true array
 
-const { matched, unmatched, income, usdBuys, lost, spend, withdrawals, margin, lending, unmatchedRequests } = groupTransactions(trades)
+const { matched, unmatched, income, usdBuys, lost, spend, withdrawals, tradeTxs, margin, lending, unmatchedRequests } = groupTransactions(rawData)
 
 /************************************************************************
  * SUMMARY
  ************************************************************************/
 if (command === 'summary') {
-  console.log('Transactions:', trades.length)
+  console.log('Transactions:', rawData.length)
   console.log('Margin Trades:', margin.length)
   console.log('Lending:', lending.length)
   console.log('USD Buys:', usdBuys.length)
   console.log('Income:', income.length)
   console.log('Lost:', lost.length)
   console.log('Spend:', spend.length)
-  console.log('Trades:', withdrawals.length)
+  console.log('Trades:', tradeTxs.length)
   console.log('Withdrawals:', withdrawals.length)
   console.log('Matched Deposits:', matched.length)
   console.log('Unmatched Deposits:', unmatched.length)
@@ -274,7 +276,7 @@ else if (command === 'gains') {
   const subcommand = process.argv[5]
 
   if (!file2) {
-    console.error('Please specify a trades file and a gains file')
+    console.error('Please specify a transactions file and a gains file')
     process.exit(1)
   }
 
@@ -334,6 +336,173 @@ else if (command === 'gains') {
   console.warn("usdBuys", usdBuys.length)
   console.warn("usdGains", usdGains.length)
   console.warn("usdSum", Math.round(usdSum * 100) / 100)
+}
+
+// costbasis
+else if (command === 'costbasis') {
+
+  const n = Math.min(rawData.length, sampleSize)
+  const errors = []
+  let withdrawals = []
+  let deposits = []
+  let trades = []
+  let sales = []
+  let income = []
+  let lost = []
+  let spend = []
+
+  for (let i=0; i<n; i++) {
+    const tx = rawData[i]
+
+    // ignore "Cost Basis" transactions which were added for the CoinTracking tax report
+    // they are duplicates to unmatched deposits, which we can derive the cost basis of
+    if (tx.Comment === 'Cost Basis') {
+      continue
+    }
+
+    // if (tx.CurBuy) {
+    //   console.log("balance", tx.CurBuy, stock.balance(tx.CurBuy))
+    // }
+    // if (tx.CurSell) {
+    //   console.log("balance", tx.CurSell, stock.balance(tx.CurSell))
+    // }
+    // console.log("tx", tx)
+    switch(tx.Type) {
+
+      // ignore ALL withdrawals, as they do not affect cost basis calculations
+      case 'Withdrawal':
+        withdrawals.push(tx)
+      //   // ignore USD withdrawals
+      //   // ignore transactions processed via an out-of-order deposit
+      //   if (tx.CurSell !== 'USD' && !tx.processed) {
+      //     // store the cost basis (1 or more) of the withdrawal in the Withdrawal tx object so that the matching Deposit tx has access to the cost basis
+      //     try {
+      //       tx.processed = true
+      //       tx.withdrawals = stock.withdraw(+tx.Sell, tx.CurSell, tx['Trade Date'])
+      //     }
+      //     catch (e) {
+      //       if (e instanceof Stock.NoAvailablePurchaseError) {
+      //         console.error('Error making withdrawal:', e.message)
+      //         errors.push(e)
+      //       }
+      //       else {
+      //         throw e
+      //       }
+      //     }
+      //   }
+      //   // TODO: process pending deposit
+        break
+
+      case 'Deposit':
+
+        deposits.push(tx)
+
+        // USD cost basis = buy amount
+        if (tx.CurBuy === 'USD') {
+          // stock.deposit(+tx.Buy, tx.CurBuy, +tx.Buy, tx['Trade Date'])
+          // ignore USD deposits
+        }
+        // get the cost basis from matching deposits
+        else if (tx.match) {
+
+          // if we get a deposit before its matching withdrawal, go ahead and process the withdrawal now
+          // if (!tx.match.processed) {
+            // console.log("Processing out-of-order deposit with", tx.match)
+            try {
+              tx.match.processed = true
+              tx.match.withdrawals = stock.withdraw(+tx.match.Sell, tx.match.CurSell, tx.match['Trade Date'])
+            }
+            catch (e) {
+              if (e instanceof Stock.NoAvailablePurchaseError) {
+                console.error(e.message)
+                errors.push(e)
+              }
+              else {
+                throw e
+              }
+            }
+          // }
+
+          if (tx.match.withdrawals) {
+            tx.match.withdrawals.forEach(withdrawal => {
+              stock.deposit(withdrawal.amount, withdrawal.cur, withdrawal.cost, withdrawal.date)
+            })
+          }
+          else {
+            console.error(`ERROR: Matching deposit of ${tx.Buy} ${tx.CurBuy} on ${tx['Trade Date']} with no withdrawals.`)
+            errors.push(tx)
+          }
+        }
+        else {
+          console.warn(`WARNING: No matching withdrawal for deposit of ${tx.Buy} ${tx.CurBuy} on ${tx['Trade Date']}. Using historical price.`)
+          let p = 0
+          try {
+            p = await price(tx.CurBuy, 'USD', day(normalDate(tx)))
+          }
+          catch(e) {
+            console.error(`Error fetching price`)
+            errors.push(tx)
+          }
+          stock.deposit(+tx.Buy, tx.CurBuy, tx.Buy * p, tx['Trade Date'])
+          // errors.push('No matching withdrawal for deposit')
+        }
+
+        break
+
+      case 'Trade':
+        try {
+          const tradeExchanges = stock.trade(+tx.Sell, tx.CurSell, +tx.Buy, tx.CurBuy, tx['Trade Date'])
+          if (tx.CurBuy === 'USD') {
+            sales = sales.concat(tradeExchanges)
+          }
+          else {
+            trades = trades.concat(tradeExchanges)
+          }
+        }
+        catch (e) {
+          if (e instanceof Stock.NoAvailablePurchaseError) {
+            console.error('Error making trade:', e.message)
+            errors.push(e)
+          }
+          else {
+            throw e
+          }
+        }
+        break
+
+      case 'Income':
+        let p = 0
+        try {
+          p = await price(tx.CurBuy, 'USD', day(normalDate(tx)))
+        }
+        catch(e) {
+            console.error(`Error fetching price`)
+            errors.push(tx)
+          }
+        income = income.concat(stock.deposit(+tx.Buy, tx.CurBuy, tx.Buy * p, tx['Trade Date']))
+        break
+
+      case 'Lost':
+        lost.push(tx)
+        break
+
+      case 'Spend':
+        spend.push(tx)
+        break
+
+      default:
+        throw new Error('Unknown transaction type: \n' + JSON.stringify(tx))
+    }
+  }
+
+  console.log('withdrawals', withdrawals.length)
+  console.log('deposits', deposits.length)
+  console.log('trades', trades.length)
+  console.log('sales', sales.length)
+  console.log('income', income.length)
+  console.log('lost', lost.length)
+  console.log('spend:', spend.length)
+  console.log('errors', errors.length)
 }
 
 //  prices
