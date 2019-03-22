@@ -1,5 +1,6 @@
 const Stock = require('../stock.js')
 const assert = require('assert')
+const closeEnough = (a, b) => Math.abs(a - b) <= 0.02
 
 describe('stock', () => {
 
@@ -100,6 +101,25 @@ describe('stock', () => {
       assert.equal(stock.balance('ETH'), 10)
     })
 
+    it('error if not enough purchases for trade', () => {
+      const stock = Stock()
+      const date = new Date()
+      let error
+      stock.deposit(10, 'BTC', 40000, date)
+      const errorF = () => stock.trade(11, 'BTC', 110, 'ETH', date)
+      assert.throws(errorF)
+    })
+
+    it('allow margin of error in supply', () => {
+      const stock = Stock()
+      const date = new Date()
+      let error
+      stock.deposit(10, 'BTC', 40000, date)
+      stock.trade(10.01, 'BTC', 100, 'ETH', date)
+      assert(closeEnough(stock.balance('BTC'), 0))
+      assert.equal(stock.balance('ETH'), 100)
+    })
+
   })
 
   describe('withdraw', () => {
@@ -134,7 +154,7 @@ describe('stock', () => {
       assert.equal(stock.balance('BTC'), 10)
     })
 
-    it('error if not enough purchases', () => {
+    it('error if not enough purchases for withdrawal', () => {
       const stock = Stock()
       const date = new Date()
       let error

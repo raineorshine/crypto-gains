@@ -66,12 +66,7 @@ const otherType = tx => tx.Type === 'Deposit' ? 'Withdrawal' : 'Deposit'
 const z = v => v === '-' ? 0 : +v
 
 // checks if two txs are within a margin of error from each other
-let n = 0
 const closeEnough = (tx1, tx2) => {
-  // const errorRange =
-  //   tx1.CurBuy === 'BTC' ? 0.1
-  //   tx1.CurBuy === 'ETH' ? 0.02
-  //   : 0
   return Math.abs(z(tx1.Buy) - z(tx2.Sell)) <= 0.02 &&
          Math.abs(z(tx1.Sell) - z(tx2.Buy)) <= 0.02
 }

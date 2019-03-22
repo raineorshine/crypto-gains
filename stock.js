@@ -1,17 +1,13 @@
+const closeEnough = (a, b) => Math.abs(a - b) <= 0.02
+
 const Stock = () => {
 
   const lots = []
 
   const balance = cur => lots.filter(lot => lot.cur === cur).reduce((prev, item) => prev + item.amount, 0)
   const next = cur => lots.find(lot => lot.cur === cur)
-  const remove = lot => {
-    const i = lots.indexOf(lot)
-    lots.splice(i, 1)
-  }
-
-  const deposit = (amount, cur, cost, date) => {
-    lots.push({ amount, cur, cost, date })
-  }
+  const remove = lot => lots.splice(lots.indexOf(lot), 1)
+  const deposit = (amount, cur, cost, date) => lots.push({ amount, cur, cost, date })
 
   // assume withdraw is not a sale; maintain cost basis
   // validates available purchases
@@ -30,11 +26,12 @@ const Stock = () => {
       let lotDebit, cost
 
       // lot has a larger supply than is needed
-      if (lot.amount > pending) {
+      if (lot.amount > pending || closeEnough(lot.amount, pending)) {
         lotDebit = pending
         cost = lot.cost * (pending / lot.amount)
         pending = 0
       }
+      // lot is close enough
       // lot is not big enough
       else {
         lotDebit = lot.amount
@@ -72,7 +69,7 @@ const Stock = () => {
         if (!lot) throw new NoAvailablePurchaseError(`trade: No available purchase for ${sell} ${sellCur} trade on ${date} (${sell - pending} ${sellCur} found)`)
 
         // lot has a larger supply than is needed
-        if (lot.amount > pending) {
+        if (lot.amount > pending || closeEnough(lot.amount, pending)) {
           lotDebit = pending
           cost = lot.cost * (pending / lot.amount)
           lot.amount -= pending
