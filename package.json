@@ -1,6 +1,6 @@
 {
-  "name": "cost-basis-filler",
-  "description": "Generate missing cost basis for unknown crypto purchases from day-of historical price",
+  "name": "crypto-gains",
+  "description": "Calculate crypto gains using like-kind exchanges before January 1, 2018.",
   "version": "0.0.0",
   "author": {
     "name": "Raine Revere",
