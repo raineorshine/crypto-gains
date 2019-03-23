@@ -53,12 +53,8 @@ const groupByDay = trades => {
 // get the day of the date
 const day = date => date.split(' ')[0]
 
-// convert to y-m-d
-const normalDate = tx => {
-  const d = tx['Trade Date']
-  return `${d.slice(6, 10)}-${d.slice(3, 5)}-${d.slice(0, 2)} ${d.slice(11)}`
-  // 18.06.2016 15:14 0
-}
+// convert d-m-y date (e.g. 18.06.2016 15:14 0) to y-m-d
+const normalDate = d => `${d.slice(6, 10)}-${d.slice(3, 5)}-${d.slice(0, 2)} ${d.slice(11)}`
 
 // get the opposite tx type: Deposit/Withdrawal
 const otherType = tx => tx.Type === 'Deposit' ? 'Withdrawal' : 'Deposit'
@@ -193,7 +189,7 @@ const calculate = async txs => {
           else {
             let p = 0
             try {
-              p = await price(tx.CurSell, 'USD', day(normalDate(tx)), 'coinbase')
+              p = await price(tx.CurSell, 'USD', day(normalDate(tx['Trade Date'])), 'coinbase')
             }
             catch(e) {
               console.error(`Error fetching price`, e.message)
@@ -222,8 +218,8 @@ const calculate = async txs => {
 
         // update cost basis
         try {
-          const before2018 = (new Date(normalDate(tx))).getFullYear() < 2018
-          const tradeExchanges = stock.trade(+tx.Sell, tx.CurSell, +tx.Buy, tx.CurBuy, tx['Trade Date'], before2018 ? null : await price(tx.CurBuy, 'USD', day(normalDate(tx))))
+          const before2018 = (new Date(normalDate(tx['Trade Date']))).getFullYear() < 2018
+          const tradeExchanges = stock.trade(+tx.Sell, tx.CurSell, +tx.Buy, tx.CurBuy, tx['Trade Date'], before2018 ? null : await price(tx.CurBuy, 'USD', day(normalDate(tx['Trade Date']))))
           ;(before2018 ? likeKindExchanges : sales)
             .push(...tradeExchanges)
         }
@@ -244,7 +240,7 @@ const calculate = async txs => {
         // update cost basis
         let p = 0
         try {
-          p = await price(tx.CurBuy, 'USD', day(normalDate(tx)))
+          p = await price(tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])))
         }
         catch(e) {
           console.error(`Error fetching price`, e.message)
@@ -280,7 +276,7 @@ const calculate = async txs => {
           let p
           try {
             // per-day memoization
-            p = await price(tx.CurBuy, 'USD', day(normalDate(tx)))
+            p = await price(tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])))
           }
           catch (e) {
             priceErrors.push(e.message)
@@ -343,11 +339,13 @@ const txs = Array.prototype.slice.call(await csvtojson().fromString(input)) // c
 
 const { matched, unmatched, income, usdBuys, airdrops, usdDeposits, withdrawals, tradeTxs, lost, spend, margin, lending, sales, likeKindExchanges, noAvailablePurchases, noMatchingWithdrawals, priceErrors } = await calculate(txs)
 
-
 /************************************************************************
  * SUMMARY
  ************************************************************************/
 if (command === 'summary') {
+
+  const stSales = sales.filter(sale => (new Date(normalDate(sale.date)) - new Date(normalDate(sale.dateAcquired))) < 3.154e+10)
+  const ltSales = sales.filter(sale => (new Date(normalDate(sale.date)) - new Date(normalDate(sale.dateAcquired))) >= 3.154e+10)
 
   const sum = withdrawals.length + matched.length + unmatched.length + usdBuys.length + airdrops.length + usdDeposits.length + income.length + tradeTxs.length + margin.length + lending.length + lost.length + spend.length
 
@@ -377,9 +375,16 @@ if (command === 'summary') {
   console.log('')
 
   console.log('Like-Kind Exchanges', likeKindExchanges.length)
-  console.log('Sales:', sales.length)
-  console.log('Total Gains from Sales:', sales.map(sale => sale.buy - sale.cost).reduce((x,y) => x+y))
+  console.log('Unrealized Gains from Like-Kind Exchanges:', likeKindExchanges.map(sale => sale.buy - sale.cost).reduce((x,y) => x+y))
+  console.log('Short-Term Sales', stSales.length)
+  console.log('Long-Term Sales', ltSales.length)
+  console.log('Total Gains from Short-Term Sales:', stSales.map(sale => sale.buy - sale.cost).reduce((x,y) => x+y))
+  console.log('Total Gains from Long-Term Sales:', ltSales.map(sale => sale.buy - sale.cost).reduce((x,y) => x+y))
   console.log('')
+
+  // sales.forEach(sale => {
+  //   console.log((new Date(normalDate(sale.date)) - new Date(normalDate(sale.dateAcquired))) / 86400000)
+  // })
 }
 
 })()
