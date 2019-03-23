@@ -8,7 +8,7 @@ const Stock = require('./stock.js')
 const stock = Stock()
 
 const defaultExchange = 'cccagg' // cryptocompare aggregrate
-const mockPrice = false
+const mockPrice = true
 
 const airdropSymbols = { AIMS: 1, AMM: 1, ARCONA: 1, BEAUTY: 1, blockwel: 1, BNB: 1, BOBx: 1, BULLEON: 1, CAN: 1, CANDY: 1, CAT: 1, CGW: 1, CLN: 1, cryptics: 1, DATA: 1, ELEC: 1, ERC20: 1, EMO: 1, ETP: 1, 'FIFA.win': 1, FIFAmini: 1, FREE: 1, Googol: 1, HEALP: 1, HKY: 1, HMC: 1, HSC: 1, HuobiAir: 1, HUR: 1, IBA: 1, INSP: 1, JOT: 1, LPT: 1, OCEAN: 1, OCN: 1, Only: 1, PCBC: 1, PMOD: 1, R: 1, 'safe.ad': 1, SCB: 1, SNGX: 1, SSS: 1, SW: 1, TOPB: 1, TOPBTC: 1, TRX: 1, UBT: 1, VENT: 1, VIN: 1, VIU: 1, VKT: 1, 'VOS.AI': 1, WIN: 1, WLM: 1, WOLK: 1, XNN: 1, ZNT: 1 }
 
@@ -147,8 +147,9 @@ const calculate = async txs => {
   const spend = []
   const airdrops = []
 
-  let sales = []
-  let trades = []
+  const sales = []
+  const tradesBefore2018 = []
+  const tradesAfter2018 = []
   const noAvailablePurchases = []
   const noMatchingWithdrawals = []
   const priceErrors = []
@@ -187,7 +188,7 @@ const calculate = async txs => {
         try {
           // Trade to USD
           if (tx.Type === 'Trade') {
-            sales = sales.concat(stock.trade(+tx.Sell, tx.CurSell, +tx.Buy, 'USD', tx['Trade Date']))
+            sales.push(...stock.trade(+tx.Sell, tx.CurSell, +tx.Buy, 'USD', tx['Trade Date']))
           }
           // Shift: we have to calculate the historical USD sale value since Coinbase only provides the token price
           else {
@@ -200,7 +201,7 @@ const calculate = async txs => {
               priceErrors.push(tx)
             }
 
-            sales = sales.concat(stock.trade(+tx.Sell, tx.CurSell, tx.Sell * p, 'USD', tx['Trade Date']))
+            sales.push(...stock.trade(+tx.Sell, tx.CurSell, tx.Sell * p, 'USD', tx['Trade Date']))
           }
         }
         catch (e) {
@@ -223,7 +224,8 @@ const calculate = async txs => {
         // update cost basis
         try {
           const tradeExchanges = stock.trade(+tx.Sell, tx.CurSell, +tx.Buy, tx.CurBuy, tx['Trade Date'])
-          trades = trades.concat(tradeExchanges)
+          const trades = (new Date(normalDate(tx))).getFullYear() < 2018 ? tradesBefore2018 : tradesAfter2018
+          trades.push(...tradeExchanges)
         }
         catch (e) {
           if (e instanceof Stock.NoAvailablePurchaseError) {
@@ -252,8 +254,7 @@ const calculate = async txs => {
       }
 
       // DEPOSIT
-
-      else if (tx.Type === 'Deposit') {
+ else if (tx.Type === 'Deposit') {
 
         // USD deposits have as-is cost basis
         if (tx.CurBuy === 'USD') {
@@ -316,7 +317,7 @@ const calculate = async txs => {
     }
   }
 
-  return { matched, unmatched, income, usdBuys, airdrops, usdDeposits, withdrawals, tradeTxs, lost, spend, margin, lending, sales, trades, noAvailablePurchases, noMatchingWithdrawals, priceErrors }
+  return { matched, unmatched, income, usdBuys, airdrops, usdDeposits, withdrawals, tradeTxs, lost, spend, margin, lending, sales, tradesBefore2018, tradesAfter2018, noAvailablePurchases, noMatchingWithdrawals, priceErrors }
 }
 
 
@@ -340,7 +341,7 @@ if (!file) {
 const input = fixHeader(fs.readFileSync(file, 'utf-8'))
 const txs = Array.prototype.slice.call(await csvtojson().fromString(input)) // convert to true array
 
-const { matched, unmatched, income, usdBuys, airdrops, usdDeposits, lost, spend, withdrawals, tradeTxs, margin, lending, sales, trades, noAvailablePurchases, noMatchingWithdrawals, priceErrors } = await calculate(txs)
+const { matched, unmatched, income, usdBuys, airdrops, usdDeposits, withdrawals, tradeTxs, lost, spend, margin, lending, sales, tradesBefore2018, tradesAfter2018, noAvailablePurchases, noMatchingWithdrawals, priceErrors } = await calculate(txs)
 
 
 /************************************************************************
@@ -369,10 +370,10 @@ if (command === 'summary') {
   )
   console.log('')
 
-  const stockSum = trades.length + sales.length
-  console.log('Trades', trades.length)
-  console.log('Sales', sales.length)
-  console.log('Total Gains from Sales', sales.map(sale => sale.buy - sale.cost).reduce((x,y) => x+y))
+  console.log('Trades before 2018: ', tradesBefore2018.length)
+  console.log('Trades after 2018: ', tradesAfter2018.length)
+  console.log('Sales: ', sales.length)
+  console.log('Total Gains from Sales: ', sales.map(sale => sale.buy - sale.cost).reduce((x,y) => x+y))
   console.log('')
 
   console.log('ERRORS')
