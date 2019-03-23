@@ -11,6 +11,8 @@ const stock = Stock()
 const exchange = 'cccagg' // cryptocompare aggregrate
 const mockPrice = true
 
+const airdropSymbols = { AIMS: 1, AMM: 1, ARCONA: 1, BEAUTY: 1, blockwel: 1, BNB: 1, BOBx: 1, BULLEON: 1, CAN: 1, CANDY: 1, CAT: 1, CGW: 1, CLN: 1, cryptics: 1, DATA: 1, ELEC: 1, ERC20: 1, EMO: 1, ETP: 1, 'FIFA.win': 1, FIFAmini: 1, FREE: 1, Googol: 1, HEALP: 1, HKY: 1, HMC: 1, HSC: 1, HuobiAir: 1, HUR: 1, IBA: 1, INSP: 1, JOT: 1, LPT: 1, OCEAN: 1, OCN: 1, Only: 1, PCBC: 1, PMOD: 1, R: 1, 'safe.ad': 1, SCB: 1, SNGX: 1, SSS: 1, SW: 1, TOPB: 1, TOPBTC: 1, TRX: 1, UBT: 1, VENT: 1, VIN: 1, VIU: 1, VKT: 1, 'VOS.AI': 1, WIN: 1, WLM: 1, WOLK: 1, XNN: 1, ZNT: 1 }
+
 // replace duplicate Cur. with CurBuy, CurSell, CurFee
 const fixHeader = input => {
   const lines = input.split('\n')
@@ -137,6 +139,7 @@ const calculate = async txs => {
   const tradeTxs = []
   const lost = []
   const spend = []
+  const airdrops = []
 
   let sales = []
   let trades = []
@@ -230,13 +233,17 @@ const calculate = async txs => {
 
       else if (tx.Type === 'Deposit') {
 
-        // try to match the deposit to a same-day withdrawal
+        // USD deposits have as-is cost basis
         if (tx.CurBuy === 'USD') {
           usdDeposits.push(tx)
-
-          // update cost basis
           stock.deposit(+tx.Buy, 'USD', tx.Buy, tx['Trade Date'])
         }
+        // air drops have cost basis of 0
+        else if (tx.CurBuy in airdropSymbols) {
+          airdrops.push(tx)
+          stock.deposit(+tx.Buy, tx.CurBuy, 0, tx['Trade Date'])
+        }
+        // try to match the deposit to a same-day withdrawal
         else if (findMatchingWithdrawal(tx, group)) {
           matched.push(tx)
         }
@@ -264,7 +271,7 @@ const calculate = async txs => {
 
           unmatched.push(newTx)
 
-          // update cost basis
+          // cost basis based on day-of price
           stock.deposit(+tx.Buy, tx.CurBuy, tx.Buy * p, tx['Trade Date'])
         }
 
@@ -287,7 +294,7 @@ const calculate = async txs => {
     }
   }
 
-  return { matched, unmatched, income, usdBuys, usdDeposits, withdrawals, tradeTxs, lost, spend, margin, lending, sales, trades, noAvailablePurchases, noMatchingWithdrawals, priceErrors }
+  return { matched, unmatched, income, usdBuys, airdrops, usdDeposits, withdrawals, tradeTxs, lost, spend, margin, lending, sales, trades, noAvailablePurchases, noMatchingWithdrawals, priceErrors }
 }
 
 
@@ -311,7 +318,7 @@ if (!file) {
 const input = fixHeader(fs.readFileSync(file, 'utf-8'))
 const txs = Array.prototype.slice.call(await csvtojson().fromString(input)) // convert to true array
 
-const { matched, unmatched, income, usdBuys, usdDeposits, lost, spend, withdrawals, tradeTxs, margin, lending, sales, trades, noAvailablePurchases, noMatchingWithdrawals, priceErrors } = await calculate(txs)
+const { matched, unmatched, income, usdBuys, airdrops, usdDeposits, lost, spend, withdrawals, tradeTxs, margin, lending, sales, trades, noAvailablePurchases, noMatchingWithdrawals, priceErrors } = await calculate(txs)
 
 
 /************************************************************************
@@ -319,7 +326,7 @@ const { matched, unmatched, income, usdBuys, usdDeposits, lost, spend, withdrawa
  ************************************************************************/
 if (command === 'summary') {
 
-  const sum = withdrawals.length + matched.length + unmatched.length + usdBuys.length + usdDeposits.length + income.length + tradeTxs.length + margin.length + lending.length + lost.length + spend.length
+  const sum = withdrawals.length + matched.length + unmatched.length + usdBuys.length + airdrops.length + usdDeposits.length + income.length + tradeTxs.length + margin.length + lending.length + lost.length + spend.length
 
   console.log('')
   console.log('Withdrawals:', withdrawals.length)
@@ -327,6 +334,7 @@ if (command === 'summary') {
   console.log('Unmatched Deposits:', unmatched.length)
   console.log('USD Buys:', usdBuys.length)
   console.log('USD Deposits:', usdDeposits.length)
+  console.log('Airdrops', airdrops.length)
   console.log('Income:', income.length)
   console.log('Trades:', tradeTxs.length)
   console.log('Margin Trades:', margin.length)
