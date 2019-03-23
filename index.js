@@ -3,13 +3,12 @@ const csvtojson = require('csvtojson')
 const json2csv = require('json2csv')
 const got = require('got')
 const secure = require('./secure.json')
-const memoize = require('p-memoize')
-const ProgressBar = require('progress')
+const memoize = require('nano-persistent-memoizer')
 const Stock = require('./stock.js')
 const stock = Stock()
 
 const defaultExchange = 'cccagg' // cryptocompare aggregrate
-const mockPrice = true
+const mockPrice = false
 
 const airdropSymbols = { AIMS: 1, AMM: 1, ARCONA: 1, BEAUTY: 1, blockwel: 1, BNB: 1, BOBx: 1, BULLEON: 1, CAN: 1, CANDY: 1, CAT: 1, CGW: 1, CLN: 1, cryptics: 1, DATA: 1, ELEC: 1, ERC20: 1, EMO: 1, ETP: 1, 'FIFA.win': 1, FIFAmini: 1, FREE: 1, Googol: 1, HEALP: 1, HKY: 1, HMC: 1, HSC: 1, HuobiAir: 1, HUR: 1, IBA: 1, INSP: 1, JOT: 1, LPT: 1, OCEAN: 1, OCN: 1, Only: 1, PCBC: 1, PMOD: 1, R: 1, 'safe.ad': 1, SCB: 1, SNGX: 1, SSS: 1, SW: 1, TOPB: 1, TOPBTC: 1, TRX: 1, UBT: 1, VENT: 1, VIN: 1, VIU: 1, VKT: 1, 'VOS.AI': 1, WIN: 1, WLM: 1, WOLK: 1, XNN: 1, ZNT: 1 }
 
@@ -90,7 +89,9 @@ const match = (tx1, tx2) =>
   tx1.CurSell === tx2.CurBuy &&
   closeEnough(tx1, tx2)
 
-const price = mockPrice ? (async () => 0) : memoize(async (from, to, time, exchange = defaultExchange) => {
+// memoized price
+const mPrice = memoize('price').async(async key => {
+  const { from, to, time, exchange } = JSON.parse(key)
   const url = `https://min-api.cryptocompare.com/data/pricehistorical?fsym=${from}&tsyms=${to}&ts=${(new Date(time)).getTime()/1000}&e=${exchange}&api_key=${secure.cryptoCompareApiKey}&extraParams=cost-basis-filler`
   const data = JSON.parse((await got(url)).body)
 
@@ -107,6 +108,11 @@ const price = mockPrice ? (async () => 0) : memoize(async (from, to, time, excha
     throw new Error('Unknown Response', data)
   }
 })
+
+const price = mockPrice
+  ? (async () => 0)
+  // stringify arguments into caching key for memoize
+  : async (from, to, time, exchange = defaultExchange) => +(await mPrice(JSON.stringify({ from, to, time, exchange })))
 
 // USD buy = crypto sale
 const isUsdBuy = trade =>
