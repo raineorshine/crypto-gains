@@ -93,7 +93,7 @@ const Stock = () => {
         amount: buyNew,
         cur: buyCur,
         cost: newCostBasis != null ? newCostBasis : cost, // give the new currency a new cost basis if provided
-        date
+        date: newCostBasis != null || !lot ? date : lot.date
       })
 
       exchanges.push({

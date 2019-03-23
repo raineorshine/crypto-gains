@@ -34,7 +34,7 @@ describe('stock', () => {
           sell: 1,
           sellCur: 'BTC',
           cost: 4000,
-          date: date,
+          date,
           dateAcquired: date
         }
       ])
@@ -42,11 +42,12 @@ describe('stock', () => {
       assert.equal(stock.balance('ETH'), 10)
     })
 
-    it('option to set new cost basis (i.e. treat as taxable sale)', () => {
+    it('preserve dateAcquired', () => {
       const stock = Stock()
-      const date = new Date()
-      stock.deposit(2, 'BTC', 8000, date)
-      const exchanges1 = stock.trade(1, 'BTC', 10, 'ETH', date, 5000) // update cost basis
+      const dateAcquired = new Date('2019')
+      const now = new Date()
+      stock.deposit(2, 'BTC', 8000, dateAcquired)
+      const exchanges1 = stock.trade(1, 'BTC', 10, 'ETH', now)
       assert.deepEqual(exchanges1, [
         {
           buy: 10,
@@ -54,14 +55,50 @@ describe('stock', () => {
           sell: 1,
           sellCur: 'BTC',
           cost: 4000, // original cost basis
-          date: date,
-          dateAcquired: date
+          date: now,
+          dateAcquired
         }
       ])
       assert.equal(stock.balance('BTC'), 1)
       assert.equal(stock.balance('ETH'), 10)
 
-      const exchanges2 = stock.trade(10, 'ETH', 1, 'BTC', date)
+      const exchanges2 = stock.trade(10, 'ETH', 1, 'BTC', now)
+      assert.deepEqual(exchanges2, [
+        {
+          buy: 1,
+          buyCur: 'BTC',
+          sell: 10,
+          sellCur: 'ETH',
+          cost: 4000,
+          date: now,
+          dateAcquired // original date
+        }
+      ])
+      assert.equal(stock.balance('BTC'), 2)
+      assert.equal(stock.balance('ETH'), 0)
+    })
+
+    it('option to set new cost basis (i.e. treat as taxable sale)', () => {
+      const stock = Stock()
+      const dateAcquired = new Date('2019')
+      const now = new Date()
+      stock.deposit(2, 'BTC', 8000, dateAcquired)
+      const exchanges1 = stock.trade(1, 'BTC', 10, 'ETH', now, 5000) // update cost basis
+      assert.deepEqual(exchanges1, [
+        {
+          buy: 10,
+          buyCur: 'ETH', // ETH takes on new, given cost basis
+          sell: 1,
+          sellCur: 'BTC',
+          cost: 4000, // original cost basis
+          date: now,
+          dateAcquired
+        }
+      ])
+      assert.equal(stock.balance('BTC'), 1)
+      assert.equal(stock.balance('ETH'), 10)
+
+      const exchanges2 = stock.trade(10, 'ETH', 1, 'BTC', now)
       assert.deepEqual(exchanges2, [
         {
           buy: 1,
@@ -69,8 +106,8 @@ describe('stock', () => {
           sell: 10,
           sellCur: 'ETH',
           cost: 5000,
-          date: date,
-          dateAcquired: date
+          date: now,
+          dateAcquired: now // new date
         }
       ])
       assert.equal(stock.balance('BTC'), 2)
@@ -89,7 +126,7 @@ describe('stock', () => {
           sell: 0.5,
           sellCur: 'BTC',
           cost: 2000,
-          date: date,
+          date,
           dateAcquired: date
         }
       ])
@@ -110,7 +147,7 @@ describe('stock', () => {
           sell: 10,
           sellCur: 'BTC',
           cost: 30000,
-          date: date,
+          date,
           dateAcquired: date
         },
         {
@@ -119,7 +156,7 @@ describe('stock', () => {
           sell: 5,
           sellCur: 'BTC',
           cost: 20000,
-          date: date,
+          date,
           dateAcquired: date
         },
       ])
@@ -168,7 +205,7 @@ describe('stock', () => {
           amount: 1,
           cur: 'BTC',
           cost: 4000,
-          date: date
+          date
         }
       ])
     })
@@ -183,7 +220,7 @@ describe('stock', () => {
           amount: 1,
           cur: 'BTC',
           cost: 4000,
-          date: date
+          date
         }
       ])
       assert.equal(stock.balance('BTC'), 10)
@@ -209,13 +246,13 @@ describe('stock', () => {
           amount: 10,
           cur: 'BTC',
           cost: 30000,
-          date: date
+          date
         },
         {
           amount: 5,
           cur: 'BTC',
           cost: 20000,
-          date: date
+          date
         },
       ])
     })
