@@ -270,7 +270,7 @@ const calculate = async txs => {
         // and add it to the stock
         else {
           const message = `WARNING: No matching withdrawal for deposit of ${tx.Buy} ${tx.CurBuy} on ${tx['Trade Date']}. Using historical price.`
-          console.warn(message)
+          // console.warn(message)
           noMatchingWithdrawals.push(message)
 
           let p

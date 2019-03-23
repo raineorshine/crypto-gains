@@ -5,22 +5,23 @@ const Stock = () => {
   const lots = []
 
   const balance = cur => lots.filter(lot => lot.cur === cur).reduce((prev, item) => prev + item.amount, 0)
-  const next = cur => lots.find(lot => lot.cur === cur)
+  const next = (cur, type = 'fifo') => (type === 'fifo' ? lots : lots.slice().reverse()).find(lot => lot.cur === cur)
   const remove = lot => lots.splice(lots.indexOf(lot), 1)
   const deposit = (amount, cur, cost, date) => lots.push({ amount, cur, cost, date })
 
   // assume withdraw is not a sale; maintain cost basis
   // validates available purchases
-  const withdraw = (amount, cur, date) => {
+  const withdraw = (amount, cur, date, type = 'fifo') => {
     let pending = amount
-    let lotIndex = 0
     const exchangeLots = []
 
     // get all lots of the withdawal currency
     const curLots = lots.filter(lot => lot.cur === cur)
+    let i = type === 'fifo' ? 0 : curLots.length - 1
 
     while (pending > 0) {
-      const lot = curLots[lotIndex++]
+      // must use index since lots are not removed with withdraw
+      const lot = curLots[type === 'fifo' ? i++ : i--]
       if (!lot) throw new NoAvailablePurchaseError(`withdraw: No available purchase for ${amount} ${cur} on ${date} (${amount - pending} ${cur} found)`)
 
       let lotDebit, cost
@@ -52,7 +53,7 @@ const Stock = () => {
 
   // new cost basis sets the cost basis of the new currency (i.e. treats it as a taxable sale)
   // otherwise the cost basis is preserved
-  const trade = (sell, sellCur, buy, buyCur, date, newCostBasis) => {
+  const trade = (sell, sellCur, buy, buyCur, date, newCostBasis, type = 'fifo') => {
     let pending = sell
     const exchanges = []
     while (pending > 0) {
@@ -67,7 +68,7 @@ const Stock = () => {
       }
       // non-USD
       else {
-        lot = next(sellCur)
+        lot = next(sellCur, type)
         if (!lot) throw new NoAvailablePurchaseError(`trade: No available purchase for ${sell} ${sellCur} trade on ${date} (${sell - pending} ${sellCur} found)`)
 
         // lot has a larger supply than is needed
@@ -102,7 +103,7 @@ const Stock = () => {
         sell: lotDebit,
         sellCur,
         cost,
-        date,
+        date, // include this even though it is an argument in order to make concatenated exchanges easier
         dateAcquired: lot ? lot.date : date
       })
     }

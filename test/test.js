@@ -42,6 +42,27 @@ describe('stock', () => {
       assert.equal(stock.balance('ETH'), 10)
     })
 
+    it('support per-trade fifo/lifo', () => {
+      const stock = Stock()
+      const date = new Date()
+      stock.deposit(1, 'BTC', 4000, date)
+      stock.deposit(1, 'BTC', 5000, date)
+      const exchanges = stock.trade(1, 'BTC', 10, 'ETH', date, null, 'lifo')
+      assert.deepEqual(exchanges, [
+        {
+          buy: 10,
+          buyCur: 'ETH',
+          sell: 1,
+          sellCur: 'BTC',
+          cost: 5000,
+          date,
+          dateAcquired: date
+        }
+      ])
+      assert.equal(stock.balance('BTC'), 1)
+      assert.equal(stock.balance('ETH'), 10)
+    })
+
     it('preserve dateAcquired', () => {
       const stock = Stock()
       const dateAcquired = new Date('2019')
@@ -134,7 +155,28 @@ describe('stock', () => {
       assert.equal(stock.balance('ETH'), 5)
     })
 
-    it('return multiple lots taken FIFO when trading on multiple purchases', () => {
+    it('default to fifo when there are multiple lots', () => {
+      const stock = Stock()
+      const date = new Date()
+      stock.deposit(1, 'BTC', 3000, date)
+      stock.deposit(1, 'BTC', 4000, date)
+      const exchanges = stock.trade(1, 'BTC', 10, 'ETH', date)
+      assert.deepEqual(exchanges, [
+        {
+          buy: 10,
+          buyCur: 'ETH',
+          sell: 1,
+          sellCur: 'BTC',
+          cost: 3000,
+          date,
+          dateAcquired: date
+        }
+      ])
+      assert.equal(stock.balance('BTC'), 1)
+      assert.equal(stock.balance('ETH'), 10)
+    })
+
+    it('return multiple lots when trading on multiple purchases', () => {
       const stock = Stock()
       const date = new Date()
       stock.deposit(10, 'BTC', 30000, date)
@@ -256,6 +298,23 @@ describe('stock', () => {
         },
       ])
     })
+
+    it('support per-trade fifo/lifo', () => {
+      const stock = Stock()
+      const date = new Date()
+      stock.deposit(1, 'BTC', 4000, date)
+      stock.deposit(1, 'BTC', 5000, date)
+      const exchanges = stock.withdraw(1, 'BTC', date, 'lifo')
+      assert.deepEqual(exchanges, [
+        {
+          amount: 1,
+          cur: 'BTC',
+          cost: 5000,
+          date
+        }
+      ])
+    })
+
   })
 
 })
