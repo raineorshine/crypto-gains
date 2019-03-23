@@ -8,7 +8,7 @@ const ProgressBar = require('progress')
 const Stock = require('./stock.js')
 const stock = Stock()
 
-const exchange = 'cccagg' // cryptocompare aggregrate
+const defaultExchange = 'cccagg' // cryptocompare aggregrate
 const mockPrice = true
 
 const airdropSymbols = { AIMS: 1, AMM: 1, ARCONA: 1, BEAUTY: 1, blockwel: 1, BNB: 1, BOBx: 1, BULLEON: 1, CAN: 1, CANDY: 1, CAT: 1, CGW: 1, CLN: 1, cryptics: 1, DATA: 1, ELEC: 1, ERC20: 1, EMO: 1, ETP: 1, 'FIFA.win': 1, FIFAmini: 1, FREE: 1, Googol: 1, HEALP: 1, HKY: 1, HMC: 1, HSC: 1, HuobiAir: 1, HUR: 1, IBA: 1, INSP: 1, JOT: 1, LPT: 1, OCEAN: 1, OCN: 1, Only: 1, PCBC: 1, PMOD: 1, R: 1, 'safe.ad': 1, SCB: 1, SNGX: 1, SSS: 1, SW: 1, TOPB: 1, TOPBTC: 1, TRX: 1, UBT: 1, VENT: 1, VIN: 1, VIU: 1, VKT: 1, 'VOS.AI': 1, WIN: 1, WLM: 1, WOLK: 1, XNN: 1, ZNT: 1 }
@@ -90,10 +90,9 @@ const match = (tx1, tx2) =>
   tx1.CurSell === tx2.CurBuy &&
   closeEnough(tx1, tx2)
 
-const price = mockPrice ? async () => 0 : memoize(async (from, to, time) => {
+const price = mockPrice ? (async () => 0) : memoize(async (from, to, time, exchange = defaultExchange) => {
   const url = `https://min-api.cryptocompare.com/data/pricehistorical?fsym=${from}&tsyms=${to}&ts=${(new Date(time)).getTime()/1000}&e=${exchange}&api_key=${secure.cryptoCompareApiKey}&extraParams=cost-basis-filler`
-  const data = JSON.parse((await got(url))
-  .body)
+  const data = JSON.parse((await got(url)).body)
 
   if (data[from]) {
     return data[from][to]
@@ -109,6 +108,7 @@ const price = mockPrice ? async () => 0 : memoize(async (from, to, time) => {
   }
 })
 
+// USD buy = crypto sale
 const isUsdBuy = trade =>
   ((trade.Type === 'Withdrawal' && trade.Exchange === 'Coinbase' && !trade.Fee && trade.Sell < 4) || // shift card (infer)
   (trade.Type === 'Trade' && trade.CurBuy === 'USD')) && // Crypto Sale
@@ -179,7 +179,23 @@ const calculate = async txs => {
 
         // update cost basis
         try {
-          sales = sales.concat(stock.trade(+tx.Sell, tx.CurSell, +tx.Buy, tx.CurBuy, tx['Trade Date']))
+          // Trade to USD
+          if (tx.Type === 'Trade') {
+            sales = sales.concat(stock.trade(+tx.Sell, tx.CurSell, +tx.Buy, 'USD', tx['Trade Date']))
+          }
+          // Shift: we have to calculate the historical USD sale value since Coinbase only provides the token price
+          else {
+            let p = 0
+            try {
+              p = await price(tx.CurSell, 'USD', day(normalDate(tx)), 'coinbase')
+            }
+            catch(e) {
+              console.error(`Error fetching price`, e.message)
+              priceErrors.push(tx)
+            }
+
+            sales = sales.concat(stock.trade(+tx.Sell, tx.CurSell, tx.Sell * p, 'USD', tx['Trade Date']))
+          }
         }
         catch (e) {
           if (e instanceof Stock.NoAvailablePurchaseError) {
@@ -223,9 +239,9 @@ const calculate = async txs => {
           p = await price(tx.CurBuy, 'USD', day(normalDate(tx)))
         }
         catch(e) {
-            console.error(`Error fetching price`)
-            priceErrors.push(tx)
-          }
+          console.error(`Error fetching price`, e.message)
+          priceErrors.push(tx)
+        }
         stock.deposit(+tx.Buy, tx.CurBuy, tx.Buy * p, tx['Trade Date'])
       }
 
@@ -350,7 +366,7 @@ if (command === 'summary') {
   const stockSum = trades.length + sales.length
   console.log('Trades', trades.length)
   console.log('Sales', sales.length)
-  console.log(`SUM: ${stockSum}`)
+  console.log('Total Gains from Sales', sales.map(sale => sale.buy - sale.cost).reduce((x,y) => x+y))
   console.log('')
 
   console.log('ERRORS')
@@ -358,7 +374,6 @@ if (command === 'summary') {
   console.log('No matching withdrawals: ', noMatchingWithdrawals.length)
   console.log('Price errors: ', priceErrors.length)
   console.log('')
-  // noAvailablePurchases.forEach(err => console.error(err.message))
 }
 
 })()
