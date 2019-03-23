@@ -2,19 +2,18 @@ Historical prices provided by the [cryptocompare API](https://min-api.cryptocomp
 
 ## Usage
 
-    $ node index.js data.csv
+```sh
+Usage: index.js <data.csv> [options]
 
-    $ node index.js data.csv summary
-
-If a symbol cannot be found, errors will be shown and the price will be empty:
-
-    402/402 100% 0.0s (2 errors)
-    No price for BLOOBLOO on 2018-12-11
-    No price for BLOGBING on 2018-12-13
-    Type  Buy Cur.  Sell  Cur.Sell Exchange  Trade Group Comment Trade Date  Price
-    "Income","1.00000000","BLOOBLOO","-","Coinssss","",,"11.12.2018 00:00"
-    "Income","10.00000000",BLOGBING","-","Coinssss","",,"13.12.2018 00:00"
-    "Income","0.63300000","BTC","-","Kraken","Krakenger","18.06.2016 15:14"  "753.77"
+Options:
+  --help       Show help                                               [boolean]
+  --version    Show version number                                     [boolean]
+  --exchange   Exchange for price lookups.                   [default: "cccagg"]
+  --mockprice  Mock price in place of cryptocompare lookups.
+  --limit      Limit number of transactions processed.       [default: Infinity]
+  --summary    Show a summary of results.
+  --verbose    Show more errors and warnings.
+```
 
 ## Installation
 

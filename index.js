@@ -1,4 +1,5 @@
 const fs = require('fs')
+const yargs = require('yargs')
 const csvtojson = require('csvtojson')
 const json2csv = require('json2csv')
 const got = require('got')
@@ -6,9 +7,6 @@ const secure = require('./secure.json')
 const memoize = require('nano-persistent-memoizer')
 const Stock = require('./stock.js')
 const stock = Stock()
-
-const defaultExchange = 'cccagg' // cryptocompare aggregrate
-const mockPrice = false
 
 const airdropSymbols = { AIMS: 1, AMM: 1, ARCONA: 1, BEAUTY: 1, blockwel: 1, BNB: 1, BOBx: 1, BULLEON: 1, CAN: 1, CANDY: 1, CAT: 1, CGW: 1, CLN: 1, cryptics: 1, DATA: 1, ELEC: 1, ERC20: 1, EMO: 1, ETP: 1, 'FIFA.win': 1, FIFAmini: 1, FREE: 1, Googol: 1, HEALP: 1, HKY: 1, HMC: 1, HSC: 1, HuobiAir: 1, HUR: 1, IBA: 1, INSP: 1, JOT: 1, LPT: 1, OCEAN: 1, OCN: 1, Only: 1, PCBC: 1, PMOD: 1, R: 1, 'safe.ad': 1, SCB: 1, SNGX: 1, SSS: 1, SW: 1, TOPB: 1, TOPBTC: 1, TRX: 1, UBT: 1, VENT: 1, VIN: 1, VIU: 1, VKT: 1, 'VOS.AI': 1, WIN: 1, WLM: 1, WOLK: 1, XNN: 1, ZNT: 1 }
 
@@ -105,10 +103,9 @@ const mPrice = memoize('price').async(async key => {
   }
 })
 
-const price = mockPrice
-  ? (async () => 0)
-  // stringify arguments into caching key for memoize
-  : async (from, to, time, exchange = defaultExchange) => +(await mPrice(JSON.stringify({ from, to, time, exchange })))
+// calculate the price of a currency in a countercurrency
+// stringify arguments into caching key for memoize
+const price = async (from, to, time, exchange = argv.exchange) => argv.mockprice || +(await mPrice(JSON.stringify({ from, to, time, exchange })))
 
 // USD buy = crypto sale
 const isUsdBuy = trade =>
@@ -225,7 +222,9 @@ const calculate = async txs => {
         }
         catch (e) {
           if (e instanceof Stock.NoAvailablePurchaseError) {
-            console.error('Error making trade:', e.message)
+            if (argv.verbose) {
+              console.error('Error making trade:', e.message)
+            }
             noAvailablePurchases.push(e)
           }
           else {
@@ -270,7 +269,9 @@ const calculate = async txs => {
         // and add it to the stock
         else {
           const message = `WARNING: No matching withdrawal for deposit of ${tx.Buy} ${tx.CurBuy} on ${tx['Trade Date']}. Using historical price.`
-          // console.warn(message)
+          if (argv.verbose) {
+            console.warn(message)
+          }
           noMatchingWithdrawals.push(message)
 
           let p
@@ -321,28 +322,28 @@ const calculate = async txs => {
 * RUN
 *****************************************************************/
 
-const file = process.argv[2]
-const command = process.argv[3]
-const sampleSize = process.argv[4] || Infinity
+const argv = yargs
+  .usage('Usage: $0 <data.csv> [options]')
+  .demandCommand(1)
+  .option('exchange', { default: 'cccagg', describe: 'Exchange for price lookups.' })
+  .option('limit', { default: Infinity, describe: 'Limit number of transactions processed.' })
+  .option('mockprice', { describe: 'Mock price in place of cryptocompare lookups.' })
+  .option('summary', { describe: 'Show a summary of results.' })
+  .option('verbose', { describe: 'Show more errors and warnings.' })
+  .argv
 
-if (!file) {
-  console.error('Please specify a file. \n\nUsage: \nnode index.js [transactions.csv] command')
-  process.exit(1)
-}
+const file = argv._[0]
+
+
+;(async () => {
 
 // import csv
-
-(async () => {
-
 const input = fixHeader(fs.readFileSync(file, 'utf-8'))
-const txs = Array.prototype.slice.call(await csvtojson().fromString(input)) // convert to true array
+const txs = Array.prototype.slice.call(await csvtojson().fromString(input), 0, argv.limit) // convert to true array
 
 const { matched, unmatched, income, usdBuys, airdrops, usdDeposits, withdrawals, tradeTxs, lost, spend, margin, lending, sales, likeKindExchanges, noAvailablePurchases, noMatchingWithdrawals, priceErrors } = await calculate(txs)
 
-/************************************************************************
- * SUMMARY
- ************************************************************************/
-if (command === 'summary') {
+if (argv.summary) {
 
   const stSales = sales.filter(sale => (new Date(normalDate(sale.date)) - new Date(normalDate(sale.dateAcquired))) < 3.154e+10)
   const ltSales = sales.filter(sale => (new Date(normalDate(sale.date)) - new Date(normalDate(sale.dateAcquired))) >= 3.154e+10)
@@ -378,13 +379,9 @@ if (command === 'summary') {
   console.log('Unrealized Gains from Like-Kind Exchanges:', likeKindExchanges.map(sale => sale.buy - sale.cost).reduce((x,y) => x+y))
   console.log('Short-Term Sales', stSales.length)
   console.log('Long-Term Sales', ltSales.length)
-  console.log('Total Gains from Short-Term Sales:', stSales.map(sale => sale.buy - sale.cost).reduce((x,y) => x+y))
-  console.log('Total Gains from Long-Term Sales:', ltSales.map(sale => sale.buy - sale.cost).reduce((x,y) => x+y))
+  console.log('Total Gains from Short-Term Sales:', stSales.map(sale => sale.buy - sale.cost).reduce((x,y) => x+y, 0))
+  console.log('Total Gains from Long-Term Sales:', ltSales.map(sale => sale.buy - sale.cost).reduce((x,y) => x+y, 0))
   console.log('')
-
-  // sales.forEach(sale => {
-  //   console.log((new Date(normalDate(sale.date)) - new Date(normalDate(sale.dateAcquired))) / 86400000)
-  // })
 }
 
 })()
