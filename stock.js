@@ -50,7 +50,9 @@ const Stock = () => {
     return exchangeLots
   }
 
-  const trade = (sell, sellCur, buy, buyCur, date) => {
+  // new cost basis sets the cost basis of the new currency (i.e. treats it as a taxable sale)
+  // otherwise the cost basis is preserved
+  const trade = (sell, sellCur, buy, buyCur, date, newCostBasis) => {
     let pending = sell
     const exchanges = []
     while (pending > 0) {
@@ -90,7 +92,7 @@ const Stock = () => {
       lots.push({
         amount: buyNew,
         cur: buyCur,
-        cost,
+        cost: newCostBasis != null ? newCostBasis : cost, // give the new currency a new cost basis if provided
         date
       })
 

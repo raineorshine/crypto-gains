@@ -370,16 +370,16 @@ if (command === 'summary') {
   )
   console.log('')
 
-  console.log('Trades before 2018: ', tradesBefore2018.length)
-  console.log('Trades after 2018: ', tradesAfter2018.length)
-  console.log('Sales: ', sales.length)
-  console.log('Total Gains from Sales: ', sales.map(sale => sale.buy - sale.cost).reduce((x,y) => x+y))
+  console.log('ERRORS')
+  console.log('No available purchase:', noAvailablePurchases.length)
+  console.log('No matching withdrawals:', noMatchingWithdrawals.length)
+  console.log('Price errors:', priceErrors.length)
   console.log('')
 
-  console.log('ERRORS')
-  console.log('No available purchase: ', noAvailablePurchases.length)
-  console.log('No matching withdrawals: ', noMatchingWithdrawals.length)
-  console.log('Price errors: ', priceErrors.length)
+  console.log('Trades before 2018:', tradesBefore2018.length)
+  console.log('Trades after 2018:', tradesAfter2018.length)
+  console.log('Sales:', sales.length)
+  console.log('Total Gains from Sales:', sales.map(sale => sale.buy - sale.cost).reduce((x,y) => x+y))
   console.log('')
 }
 
