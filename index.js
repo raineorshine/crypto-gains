@@ -180,7 +180,7 @@ const calculate = async txs => {
         try {
           // Trade to USD
           if (tx.Type === 'Trade') {
-            sales.push(...stock.trade(+tx.Sell, tx.CurSell, +tx.Buy, 'USD', tx['Trade Date']))
+            sales.push(...stock.trade(+tx.Sell, tx.CurSell, +tx.Buy, 'USD', tx['Trade Date'], null, argv.accounting))
           }
           // Shift: we have to calculate the historical USD sale value since Coinbase only provides the token price
           else {
@@ -193,7 +193,7 @@ const calculate = async txs => {
               priceErrors.push(tx)
             }
 
-            sales.push(...stock.trade(+tx.Sell, tx.CurSell, tx.Sell * p, 'USD', tx['Trade Date']))
+            sales.push(...stock.trade(+tx.Sell, tx.CurSell, tx.Sell * p, 'USD', tx['Trade Date'], null, argv.accounting))
           }
         }
         catch (e) {
@@ -216,7 +216,7 @@ const calculate = async txs => {
         // update cost basis
         try {
           const before2018 = (new Date(normalDate(tx['Trade Date']))).getFullYear() < 2018
-          const tradeExchanges = stock.trade(+tx.Sell, tx.CurSell, +tx.Buy, tx.CurBuy, tx['Trade Date'], before2018 ? null : await price(tx.CurBuy, 'USD', day(normalDate(tx['Trade Date']))))
+          const tradeExchanges = stock.trade(+tx.Sell, tx.CurSell, +tx.Buy, tx.CurBuy, tx['Trade Date'], before2018 ? null : await price(tx.CurBuy, 'USD', day(normalDate(tx['Trade Date']))), argv.accounting)
           ;(before2018 ? likeKindExchanges : sales)
             .push(...tradeExchanges)
         }
@@ -325,6 +325,7 @@ const calculate = async txs => {
 const argv = yargs
   .usage('Usage: $0 <data.csv> [options]')
   .demandCommand(1)
+  .option('accounting', { default: 'fifo', describe: 'Accounting type: fifo/lifo.' })
   .option('exchange', { default: 'cccagg', describe: 'Exchange for price lookups.' })
   .option('limit', { default: Infinity, describe: 'Limit number of transactions processed.' })
   .option('mockprice', { describe: 'Mock price in place of cryptocompare lookups.' })
