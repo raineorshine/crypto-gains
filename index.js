@@ -8,8 +8,6 @@ const memoize = require('nano-persistent-memoizer')
 const Stock = require('./stock.js')
 const stock = Stock()
 
-const airdropSymbols = { AIMS: 1, AMM: 1, ARCONA: 1, BEAUTY: 1, blockwel: 1, BNB: 1, BOBx: 1, BULLEON: 1, CAN: 1, CANDY: 1, CAT: 1, CGW: 1, CLN: 1, cryptics: 1, DATA: 1, ELEC: 1, ERC20: 1, EMO: 1, ETP: 1, 'FIFA.win': 1, FIFAmini: 1, FREE: 1, Googol: 1, HEALP: 1, HKY: 1, HMC: 1, HSC: 1, HuobiAir: 1, HUR: 1, IBA: 1, INSP: 1, JOT: 1, LPT: 1, OCEAN: 1, OCN: 1, Only: 1, PCBC: 1, PMOD: 1, R: 1, 'safe.ad': 1, SCB: 1, SNGX: 1, SSS: 1, SW: 1, TOPB: 1, TOPBTC: 1, TRX: 1, UBT: 1, VENT: 1, VIN: 1, VIU: 1, VKT: 1, 'VOS.AI': 1, WIN: 1, WLM: 1, WOLK: 1, XNN: 1, ZNT: 1 }
-
 // replace duplicate Cur. with CurBuy, CurSell, CurFee
 const fixHeader = input => {
   const lines = input.split('\n')
@@ -139,6 +137,7 @@ const calculate = async txs => {
   const lost = []
   const spend = []
   const airdrops = []
+  const icos = []
 
   const sales = []
   const likeKindExchanges = []
@@ -155,6 +154,15 @@ const calculate = async txs => {
     // loop through each of the day's transactions
     for (let i in group) {
       const tx = group[i]
+
+      // convert ICO's to Trade
+      if(secure.icos.find(ico => +ico.Buy === +tx.Buy && ico.CurBuy === tx.CurBuy && ico.Date === tx['Trade Date'])) {
+        tx.Type = 'Trade'
+        tx.Sell =
+        tx.CurSell =
+        tx.Comment = 'ICO'
+        icos.push(tx) // this transaction will also be added to tradeTxs
+      }
 
       // LENDING
 
@@ -210,6 +218,7 @@ const calculate = async txs => {
       // TRADE
 
       // crypto-to-crypto trade
+      // include ICOs
       else if(tx.Type === 'Trade') {
         tradeTxs.push(tx)
 
@@ -249,7 +258,7 @@ const calculate = async txs => {
       }
 
       // DEPOSIT
- else if (tx.Type === 'Deposit') {
+     else if (tx.Type === 'Deposit') {
 
         // USD deposits have as-is cost basis
         if (tx.CurBuy === 'USD') {
@@ -257,7 +266,7 @@ const calculate = async txs => {
           stock.deposit(+tx.Buy, 'USD', tx.Buy, tx['Trade Date'])
         }
         // air drops have cost basis of 0
-        else if (tx.CurBuy in airdropSymbols) {
+        else if (tx.CurBuy in secure.airdropSymbols) {
           airdrops.push(tx)
           stock.deposit(+tx.Buy, tx.CurBuy, 0, tx['Trade Date'])
         }
@@ -314,7 +323,7 @@ const calculate = async txs => {
     }
   }
 
-  return { matched, unmatched, income, usdBuys, airdrops, usdDeposits, withdrawals, tradeTxs, lost, spend, margin, lending, sales, likeKindExchanges, noAvailablePurchases, noMatchingWithdrawals, priceErrors }
+  return { matched, unmatched, income, usdBuys, airdrops, icos, usdDeposits, withdrawals, tradeTxs, lost, spend, margin, lending, sales, likeKindExchanges, noAvailablePurchases, noMatchingWithdrawals, priceErrors }
 }
 
 
@@ -342,7 +351,7 @@ const file = argv._[0]
 const input = fixHeader(fs.readFileSync(file, 'utf-8'))
 const txs = Array.prototype.slice.call(await csvtojson().fromString(input), 0, argv.limit) // convert to true array
 
-const { matched, unmatched, income, usdBuys, airdrops, usdDeposits, withdrawals, tradeTxs, lost, spend, margin, lending, sales, likeKindExchanges, noAvailablePurchases, noMatchingWithdrawals, priceErrors } = await calculate(txs)
+const { matched, unmatched, income, usdBuys, airdrops, icos, usdDeposits, withdrawals, tradeTxs, lost, spend, margin, lending, sales, likeKindExchanges, noAvailablePurchases, noMatchingWithdrawals, priceErrors } = await calculate(txs)
 
 if (argv.summary) {
 
@@ -357,9 +366,10 @@ if (argv.summary) {
   console.log('Unmatched Deposits:', unmatched.length)
   console.log('USD Buys:', usdBuys.length)
   console.log('USD Deposits:', usdDeposits.length)
-  console.log('Airdrops', airdrops.length)
+  console.log('Airdrops:', airdrops.length)
   console.log('Income:', income.length)
   console.log('Trades:', tradeTxs.length)
+  console.log('ICOs (counted in trades):', icos.length)
   console.log('Margin Trades:', margin.length)
   console.log('Lending:', lending.length)
   console.log('Lost:', lost.length)
