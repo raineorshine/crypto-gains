@@ -306,6 +306,15 @@ const calculate = async txs => {
       }
       else if (tx.Type === 'Lost') {
         lost.push(tx)
+        sales.push({
+          buy: 0,
+          buyCur: tx.CurSell,
+          sell: 0,
+          sellCur: tx.CurSell,
+          cost: +tx.Sell,
+          date: tx['Trade Date'],
+          dateAcquired: tx['Trade Date']
+        })
       }
       else {
         throw new Error('I do not know how to handle this transaction: \n\n' + JSON.stringify(tx))
