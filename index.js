@@ -109,8 +109,11 @@ const price = async (from, to, time, exchange = argv.exchange) => argv.mockprice
 
 // USD buy = crypto sale
 const isUsdBuy = trade =>
-  ((trade.Type === 'Withdrawal' && trade.Exchange === 'Coinbase' && !trade.Fee && trade.Sell < 4) || // shift card (infer)
-  (trade.Type === 'Trade' && trade.CurBuy === 'USD')) && // Crypto Sale
+  (
+    (trade.Type === 'Withdrawal' && trade.Exchange === 'Coinbase' && !trade.Fee && trade.Sell < 4) || // shift card (infer)
+    (trade.Type === 'Trade' && trade.CurBuy === 'USD') ||
+    trade.Type === 'Spend'
+  ) && // Crypto Sale
   trade.CurSell !== 'USDT' // not tether
 
 // find a withdrawal in the given list of transactions that matches the given deposit
@@ -137,7 +140,6 @@ const calculate = async txs => {
   const lending = []
   const tradeTxs = []
   const lost = []
-  const spend = []
   const airdrops = []
 
   const sales = []
@@ -186,7 +188,7 @@ const calculate = async txs => {
           else {
             let p = 0
             try {
-              p = await price(tx.CurSell, 'USD', day(normalDate(tx['Trade Date'])), 'coinbase')
+              p = await price(tx.CurSell, 'USD', day(normalDate(tx['Trade Date'])), tx.Exchange)
             }
             catch(e) {
               console.error(`Error fetching price`, e.message)
@@ -249,7 +251,7 @@ const calculate = async txs => {
       }
 
       // DEPOSIT
- else if (tx.Type === 'Deposit') {
+     else if (tx.Type === 'Deposit') {
 
         // USD deposits have as-is cost basis
         if (tx.CurBuy === 'USD') {
@@ -305,16 +307,13 @@ const calculate = async txs => {
       else if (tx.Type === 'Lost') {
         lost.push(tx)
       }
-      else if (tx.Type === 'Spend') {
-        spend.push(tx)
-      }
       else {
         throw new Error('I do not know how to handle this transaction: \n\n' + JSON.stringify(tx))
       }
     }
   }
 
-  return { matched, unmatched, income, usdBuys, airdrops, usdDeposits, withdrawals, tradeTxs, lost, spend, margin, lending, sales, likeKindExchanges, noAvailablePurchases, noMatchingWithdrawals, priceErrors }
+  return { matched, unmatched, income, usdBuys, airdrops, usdDeposits, withdrawals, tradeTxs, lost, margin, lending, sales, likeKindExchanges, noAvailablePurchases, noMatchingWithdrawals, priceErrors }
 }
 
 
@@ -342,14 +341,14 @@ const file = argv._[0]
 const input = fixHeader(fs.readFileSync(file, 'utf-8'))
 const txs = Array.prototype.slice.call(await csvtojson().fromString(input), 0, argv.limit) // convert to true array
 
-const { matched, unmatched, income, usdBuys, airdrops, usdDeposits, withdrawals, tradeTxs, lost, spend, margin, lending, sales, likeKindExchanges, noAvailablePurchases, noMatchingWithdrawals, priceErrors } = await calculate(txs)
+const { matched, unmatched, income, usdBuys, airdrops, usdDeposits, withdrawals, tradeTxs, lost, margin, lending, sales, likeKindExchanges, noAvailablePurchases, noMatchingWithdrawals, priceErrors } = await calculate(txs)
 
 if (argv.summary) {
 
   const stSales = sales.filter(sale => (new Date(normalDate(sale.date)) - new Date(normalDate(sale.dateAcquired))) < 3.154e+10)
   const ltSales = sales.filter(sale => (new Date(normalDate(sale.date)) - new Date(normalDate(sale.dateAcquired))) >= 3.154e+10)
 
-  const sum = withdrawals.length + matched.length + unmatched.length + usdBuys.length + airdrops.length + usdDeposits.length + income.length + tradeTxs.length + margin.length + lending.length + lost.length + spend.length
+  const sum = withdrawals.length + matched.length + unmatched.length + usdBuys.length + airdrops.length + usdDeposits.length + income.length + tradeTxs.length + margin.length + lending.length + lost.length
 
   console.log('')
   console.log('Withdrawals:', withdrawals.length)
@@ -363,7 +362,6 @@ if (argv.summary) {
   console.log('Margin Trades:', margin.length)
   console.log('Lending:', lending.length)
   console.log('Lost:', lost.length)
-  console.log('Spend:', spend.length)
   console.log(sum === txs.length
     ? `TOTAL: ${sum} ✓`
     : `✗ TOTAL: ${sum}, TXS: ${txs.length}`
