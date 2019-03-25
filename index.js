@@ -156,7 +156,7 @@ const calculate = async txs => {
 
       // MARGIN
 
-      else if(/margin/i.test(tx['Trade Group']) || /margin/i.test(tx.Comment)) {
+      else if(/margin/i.test(tx['Trade Group'])) {
         margin.push(tx)
       }
 
@@ -224,6 +224,9 @@ const calculate = async txs => {
         }
 
       }
+
+      // INCOME
+
       else if(tx.Type === 'Income') {
         income.push(tx)
 
@@ -239,7 +242,8 @@ const calculate = async txs => {
         stock.deposit(+tx.Buy, tx.CurBuy, tx.Buy * p, tx['Trade Date'])
       }
 
-      // DEPOSIT
+     // DEPOSIT
+
      else if (tx.Type === 'Deposit') {
 
         // USD deposits have as-is cost basis
@@ -288,11 +292,14 @@ const calculate = async txs => {
 
       }
 
-      // OTHER
+      // WITHDRAWAL
 
       else if (tx.Type === 'Withdrawal') {
         withdrawals.push(tx)
       }
+
+      // LOST
+
       else if (tx.Type === 'Lost') {
         lost.push(tx)
         sales.push({
