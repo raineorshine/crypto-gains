@@ -101,12 +101,9 @@ const formatPrice = n => '$' + numberWithCommas(Math.round(n * 100)/100)
 
 // USD buy = crypto sale
 const isUsdBuy = trade =>
-  (
-    (trade.Type === 'Withdrawal' && trade.Exchange === 'Coinbase' && !trade.Fee && trade.Sell < 4) || // shift card (infer)
-    (trade.Type === 'Trade' && trade.CurBuy === 'USD') ||
-    trade.Type === 'Spend'
-  ) && // Crypto Sale
-  trade.CurSell !== 'USDT' // not tether
+  (trade.Type === 'Withdrawal' && trade.Exchange === 'Coinbase' && !trade.Fee && trade.Sell < 4) || // shift card (infer)
+  (trade.Type === 'Trade' && trade.CurBuy === 'USD') ||
+  trade.Type === 'Spend'
 
 // find a withdrawal in the given list of transactions that matches the given deposit
 const findMatchingWithdrawal = (deposit, txs) =>
