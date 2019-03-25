@@ -74,6 +74,9 @@ const match = (tx1, tx2) =>
 // memoized price
 const mPrice = memoize('price').async(async key => {
   const { from, to, time, exchange } = JSON.parse(key)
+
+  if (from === to) return 1
+
   const url = `https://min-api.cryptocompare.com/data/pricehistorical?fsym=${from}&tsyms=${to}&ts=${(new Date(time)).getTime()/1000}&e=${exchange}&api_key=${secure.cryptoCompareApiKey}&extraParams=cost-basis-filler`
   const data = JSON.parse((await got(url)).body)
 
@@ -128,7 +131,6 @@ const calculate = async txs => {
   const margin = []
   const lending = []
   const tradeTxs = []
-  const lost = []
   const airdrops = []
 
   const sales = []
@@ -149,21 +151,50 @@ const calculate = async txs => {
 
       // LENDING
 
-      // must go ahead of Trade
+      // must go before Trade
       if(/lending/i.test(tx['Trade Group']) || /lending/i.test(tx.Comment)) {
         lending.push(tx)
       }
 
       // MARGIN
 
-      else if(/margin/i.test(tx['Trade Group'])) {
+      // must go before isUsdBuy
+      // some Bitfinex margin trades are reported as Lost
+      // similar to Trade processing, but does not update stock
+      else if(/margin/i.test(tx['Trade Group']) || tx.Type === 'Lost') {
         margin.push(tx)
+
+        // handle '-' value
+        const buy = isNaN(tx.Buy ? 0 : +tx.Buy)
+        const sell = isNaN(tx.Sell ? 0 : +tx.Sell)
+
+        let buyPrice, sellPrice
+
+        try {
+          buyPrice = buy ? await price(tx.CurBuy, 'USD', day(normalDate(tx['Trade Date']))) : 0
+          sellPrice = sell ? await price(tx.CurSell, 'USD', day(normalDate(tx['Trade Date']))) : 0
+        }
+        catch(e) {
+          console.error(`Error fetching price`, e.message)
+          priceErrors.push(tx)
+        }
+
+        // simulate USD Buy
+        // use buy because a USD sale "buys" a certain amount of USD, so buy - cost is the profit
+        sales.push({
+          buy: sell * sellPrice,
+          buyCur: 'USD',
+          cost: buy * buyPrice,
+          // count as short-term gains
+          date: tx['Trade Date'],
+          dateAcquired: tx['Trade Date']
+        })
       }
 
       // SALE
 
       // USD buy = crypto sale
-      // must go ahead of Trade and Withdrawal
+      // must go before Trade and Withdrawal
       else if(isUsdBuy(tx)) {
         usdBuys.push(tx)
 
@@ -189,7 +220,9 @@ const calculate = async txs => {
         }
         catch (e) {
           if (e instanceof Stock.NoAvailablePurchaseError) {
-            console.error(e.message)
+            if (argv.verbose) {
+              console.error('Error making trade', e.message)
+            }
             noAvailablePurchases.push(e)
           }
           else {
@@ -239,6 +272,7 @@ const calculate = async txs => {
           console.error(`Error fetching price`, e.message)
           priceErrors.push(tx)
         }
+
         stock.deposit(+tx.Buy, tx.CurBuy, tx.Buy * p, tx['Trade Date'])
       }
 
@@ -298,27 +332,15 @@ const calculate = async txs => {
         withdrawals.push(tx)
       }
 
-      // LOST
+      // UNKNOWN
 
-      else if (tx.Type === 'Lost') {
-        lost.push(tx)
-        sales.push({
-          buy: 0,
-          buyCur: tx.CurSell,
-          sell: 0,
-          sellCur: tx.CurSell,
-          cost: +tx.Sell,
-          date: tx['Trade Date'],
-          dateAcquired: tx['Trade Date']
-        })
-      }
       else {
         throw new Error('I do not know how to handle this transaction: \n\n' + JSON.stringify(tx))
       }
     }
   }
 
-  return { matched, unmatched, income, usdBuys, airdrops, usdDeposits, withdrawals, tradeTxs, lost, margin, lending, sales, likeKindExchanges, noAvailablePurchases, noMatchingWithdrawals, priceErrors }
+  return { matched, unmatched, income, usdBuys, airdrops, usdDeposits, withdrawals, tradeTxs, margin, lending, sales, likeKindExchanges, noAvailablePurchases, noMatchingWithdrawals, priceErrors }
 }
 
 
@@ -346,15 +368,14 @@ const file = argv._[0]
 const input = fixHeader(fs.readFileSync(file, 'utf-8'))
 const txs = Array.prototype.slice.call(await csvtojson().fromString(input), 0, argv.limit) // convert to true array
 
-const { matched, unmatched, income, usdBuys, airdrops, usdDeposits, withdrawals, tradeTxs, lost, margin, lending, sales, likeKindExchanges, noAvailablePurchases, noMatchingWithdrawals, priceErrors } = await calculate(txs)
+const { matched, unmatched, income, usdBuys, airdrops, usdDeposits, withdrawals, tradeTxs, margin, lending, sales, likeKindExchanges, noAvailablePurchases, noMatchingWithdrawals, priceErrors } = await calculate(txs)
 
 if (argv.summary) {
 
   const stSales = sales.filter(sale => (new Date(normalDate(sale.date)) - new Date(normalDate(sale.dateAcquired))) < 3.154e+10)
   const ltSales = sales.filter(sale => (new Date(normalDate(sale.date)) - new Date(normalDate(sale.dateAcquired))) >= 3.154e+10)
 
-  const sum = withdrawals.length + matched.length + unmatched.length + usdBuys.length + airdrops.length + usdDeposits.length + income.length + tradeTxs.length + margin.length + lending.length + lost.length
-
+  const sum = withdrawals.length + matched.length + unmatched.length + usdBuys.length + airdrops.length + usdDeposits.length + income.length + tradeTxs.length + margin.length + lending.length
   console.log('')
   console.log('Withdrawals:', withdrawals.length)
   console.log('Matched Deposits:', matched.length)
@@ -366,7 +387,6 @@ if (argv.summary) {
   console.log('Trades:', tradeTxs.length)
   console.log('Margin Trades:', margin.length)
   console.log('Lending:', lending.length)
-  console.log('Lost:', lost.length)
   console.log(sum === txs.length
     ? `TOTAL: ${sum} ✓`
     : `✗ TOTAL: ${sum}, TXS: ${txs.length}`
@@ -383,6 +403,7 @@ if (argv.summary) {
   console.log('Unrealized Gains from Like-Kind Exchanges:', formatPrice(likeKindExchanges.map(sale => sale.buy - sale.cost).reduce((x,y) => x+y)))
   console.log('Short-Term Sales', stSales.length)
   console.log('Long-Term Sales', ltSales.length)
+  // use buy because a USD sale "buys" a certain amount of USD, so buy - cost is the profit
   console.log('Total Gains from Short-Term Sales:', formatPrice(stSales.map(sale => sale.buy - sale.cost).reduce((x,y) => x+y, 0)))
   console.log('Total Gains from Long-Term Sales:', formatPrice(ltSales.map(sale => sale.buy - sale.cost).reduce((x,y) => x+y, 0)))
   console.log('')
