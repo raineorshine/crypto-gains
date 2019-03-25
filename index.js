@@ -8,8 +8,6 @@ const memoize = require('nano-persistent-memoizer')
 const Stock = require('./stock.js')
 const stock = Stock()
 
-const airdropSymbols = { AIMS: 1, AMM: 1, ARCONA: 1, BEAUTY: 1, blockwel: 1, BNB: 1, BOBx: 1, BULLEON: 1, CAN: 1, CANDY: 1, CAT: 1, CGW: 1, CLN: 1, cryptics: 1, DATA: 1, ELEC: 1, ERC20: 1, EMO: 1, ETP: 1, 'FIFA.win': 1, FIFAmini: 1, FREE: 1, Googol: 1, HEALP: 1, HKY: 1, HMC: 1, HSC: 1, HuobiAir: 1, HUR: 1, IBA: 1, INSP: 1, JOT: 1, LPT: 1, OCEAN: 1, OCN: 1, Only: 1, PCBC: 1, PMOD: 1, R: 1, 'safe.ad': 1, SCB: 1, SNGX: 1, SSS: 1, SW: 1, TOPB: 1, TOPBTC: 1, TRX: 1, UBT: 1, VENT: 1, VIN: 1, VIU: 1, VKT: 1, 'VOS.AI': 1, WIN: 1, WLM: 1, WOLK: 1, XNN: 1, ZNT: 1 }
-
 // replace duplicate Cur. with CurBuy, CurSell, CurFee
 const fixHeader = input => {
   const lines = input.split('\n')
@@ -66,16 +64,6 @@ const closeEnough = (tx1, tx2) => {
          Math.abs(z(tx1.Sell) - z(tx2.Buy)) <= 0.02
 }
 
-// checks if a tx is too small to count based on a token-specific size
-// const tooSmallToCount = tx => {
-//   const tooSmallAmount =
-//     tx.CurBuy === 'BTC' ? 0.0001 :
-//     tx.CurBuy === 'ETH' ? 0.001 :
-//     0.005
-//   return z(tx.Buy) < tooSmallAmount &&
-//          z(tx.Sell) < tooSmallAmount
-// }
-
 // checks if two transactions are a Deposit/Withdrawal match
 const match = (tx1, tx2) =>
   tx1.Type === otherType(tx2.Type) &&
@@ -106,6 +94,10 @@ const mPrice = memoize('price').async(async key => {
 // calculate the price of a currency in a countercurrency
 // stringify arguments into caching key for memoize
 const price = async (from, to, time, exchange = argv.exchange) => argv.mockprice != null ? argv.mockprice : +(await mPrice(JSON.stringify({ from, to, time, exchange })))
+
+const numberWithCommas = n => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+
+const formatPrice = n => '$' + numberWithCommas(Math.round(n * 100)/100)
 
 // USD buy = crypto sale
 const isUsdBuy = trade =>
@@ -259,7 +251,7 @@ const calculate = async txs => {
           stock.deposit(+tx.Buy, 'USD', tx.Buy, tx['Trade Date'])
         }
         // air drops have cost basis of 0
-        else if (tx.CurBuy in airdropSymbols) {
+        else if (tx.CurBuy in secure.airdropSymbols) {
           airdrops.push(tx)
           stock.deposit(+tx.Buy, tx.CurBuy, 0, tx['Trade Date'])
         }
@@ -383,12 +375,12 @@ if (argv.summary) {
   console.log('Price errors:', priceErrors.length)
   console.log('')
 
-  console.log('Like-Kind Exchanges', likeKindExchanges.length)
-  console.log('Unrealized Gains from Like-Kind Exchanges:', likeKindExchanges.map(sale => sale.buy - sale.cost).reduce((x,y) => x+y))
+  console.log('Like-Kind Exchanges:', likeKindExchanges.length)
+  console.log('Unrealized Gains from Like-Kind Exchanges:', formatPrice(likeKindExchanges.map(sale => sale.buy - sale.cost).reduce((x,y) => x+y)))
   console.log('Short-Term Sales', stSales.length)
   console.log('Long-Term Sales', ltSales.length)
-  console.log('Total Gains from Short-Term Sales:', stSales.map(sale => sale.buy - sale.cost).reduce((x,y) => x+y, 0))
-  console.log('Total Gains from Long-Term Sales:', ltSales.map(sale => sale.buy - sale.cost).reduce((x,y) => x+y, 0))
+  console.log('Total Gains from Short-Term Sales:', formatPrice(stSales.map(sale => sale.buy - sale.cost).reduce((x,y) => x+y, 0)))
+  console.log('Total Gains from Long-Term Sales:', formatPrice(ltSales.map(sale => sale.buy - sale.cost).reduce((x,y) => x+y, 0)))
   console.log('')
 }
 
