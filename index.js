@@ -159,6 +159,32 @@ const calculate = async txs => {
         try {
           // Poloniex market does not exist for some coin pairs
           p = await price(tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])))
+
+          // Cryptocompare returns erroneous prices for BTS on some days. When a price that is out of range is detected, set it to 0.2 which is a reasonable estimate for that time.
+          // e.g. https://min-api.cryptocompare.com/data/pricehistorical?fsym=BTS&tsyms=USD&ts=1495756800
+          /*
+          1495756800 208.98
+          1495843200 173.07
+          1495929600 255.73
+          1496016000 252.73
+          1496102400 275.6
+          1496188800 267.5
+          1496275200 303.7
+          1496361600 343.6
+          1496448000 367.5
+          1496534400 321.38
+          1496620800 329.67
+          1496707200 360.55
+          1496793600 214.17
+          1496880000 235.96
+          1496966400 343.52
+          1497139200 489.26
+          1497312000 546.67
+          1497916800 371.61
+          */
+          if (tx.CurBuy === 'BTS' && p > 10) {
+            p = 0.2
+          }
         }
         catch(e) {
           console.error(`Error fetching price`, e.message)
