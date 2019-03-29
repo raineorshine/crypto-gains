@@ -152,8 +152,29 @@ const calculate = async txs => {
       // LENDING
 
       // must go before Trade
-      if(/lending/i.test(tx['Trade Group']) || /lending/i.test(tx.Comment)) {
+      if(/lending/i.test(tx['Trade Group'])) {
         lending.push(tx)
+
+        let p
+        try {
+          // Poloniex market does not exist for some coin pairs
+          p = await price(tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])))
+        }
+        catch(e) {
+          console.error(`Error fetching price`, e.message)
+          priceErrors.push(tx)
+        }
+
+        // simulate USD Buy
+        // use buy because a USD sale "buys" a certain amount of USD, so buy - cost is the profit
+        sales.push({
+          buy: tx.Buy * p,
+          buyCur: 'USD',
+          cost: 0,
+          // count as short-term gains
+          date: tx['Trade Date'],
+          dateAcquired: tx['Trade Date']
+        })
       }
 
       // MARGIN
