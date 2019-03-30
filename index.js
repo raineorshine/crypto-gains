@@ -5,6 +5,7 @@ const json2csv = require('json2csv')
 const got = require('got')
 const secure = require('./secure.json')
 const memoize = require('nano-persistent-memoizer')
+const mkdir = require('make-dir')
 const Stock = require('./stock.js')
 const stock = Stock()
 
@@ -21,15 +22,15 @@ const fixHeader = input => {
 }
 
 // convert trades array to CSV and restore header
-const toCSV = (trades, fields=['Type','Buy','CurBuy','Sell','CurSell','Exchange','Trade Group',,,'Comment','Trade Date']) => {
+const toCSV = (trades, fields) => {
   const csv = json2csv.parse(trades, { delimiter: ',', fields })
   const csvLines = csv.split('\n')
   return [].concat(
     csvLines[0]
       .replace('CurBuy', 'Cur.')
       .replace('CurSell', 'Cur.')
-      .replace('CurFee', 'Cur.'),
-    csvLines.slice(1)
+      .replace('CurFee', 'Cur.')
+    , csvLines.slice(1)
   ).join('\n')
 }
 
@@ -57,6 +58,13 @@ const otherType = tx => tx.Type === 'Deposit' ? 'Withdrawal' : 'Deposit'
 
 // convert a string value to a number and set '-' to 0
 const z = v => v === '-' ? 0 : +v
+
+// add two numbers
+const sum = (x,y) => x + y
+
+// return true if the sale date is over a year from the acquisision date
+const isShortTerm = sale =>
+  (new Date(normalDate(sale.date)) - new Date(normalDate(sale.dateAcquired))) < 3.154e+10
 
 // checks if two txs are within a margin of error from each other
 const closeEnough = (tx1, tx2) => {
@@ -129,11 +137,11 @@ const calculate = async txs => {
   const usdDeposits = []
   const withdrawals = []
   const margin = []
-  const lending = []
   const tradeTxs = []
   const airdrops = []
 
   const sales = []
+  const interest = [] // loan interest earned must be reported differently than sales
   const likeKindExchanges = []
   const noAvailablePurchases = []
   const noMatchingWithdrawals = []
@@ -153,7 +161,6 @@ const calculate = async txs => {
 
       // must go before Trade
       if(/lending/i.test(tx['Trade Group'])) {
-        lending.push(tx)
 
         let p
         try {
@@ -193,13 +200,11 @@ const calculate = async txs => {
 
         // simulate USD Buy
         // use buy because a USD sale "buys" a certain amount of USD, so buy - cost is the profit
-        sales.push({
-          buy: tx.Buy * p,
-          buyCur: 'USD',
-          cost: 0,
-          // count as short-term gains
+        interest.push({
           date: tx['Trade Date'],
-          dateAcquired: tx['Trade Date']
+          loanAmount: tx.Buy,
+          loanCurrency: tx.CurBuy,
+          interestEarnedUSD: tx.Buy * p
         })
       }
 
@@ -387,7 +392,7 @@ const calculate = async txs => {
     }
   }
 
-  return { matched, unmatched, income, usdBuys, airdrops, usdDeposits, withdrawals, tradeTxs, margin, lending, sales, likeKindExchanges, noAvailablePurchases, noMatchingWithdrawals, priceErrors }
+  return { matched, unmatched, income, usdBuys, airdrops, usdDeposits, withdrawals, tradeTxs, margin, sales, interest, likeKindExchanges, noAvailablePurchases, noMatchingWithdrawals, priceErrors }
 }
 
 
@@ -402,7 +407,7 @@ const argv = yargs
   .option('exchange', { default: 'cccagg', describe: 'Exchange for price lookups.' })
   .option('limit', { default: Infinity, describe: 'Limit number of transactions processed.' })
   .option('mockprice', { describe: 'Mock price in place of cryptocompare lookups.' })
-  .option('summary', { describe: 'Show a summary of results.' })
+  .option('output', { describe: 'Output directory for results.' })
   .option('verbose', { describe: 'Show more errors and warnings.' })
   .argv
 
@@ -415,45 +420,100 @@ const file = argv._[0]
 const input = fixHeader(fs.readFileSync(file, 'utf-8'))
 const txs = Array.prototype.slice.call(await csvtojson().fromString(input), 0, argv.limit) // convert to true array
 
-const { matched, unmatched, income, usdBuys, airdrops, usdDeposits, withdrawals, tradeTxs, margin, lending, sales, likeKindExchanges, noAvailablePurchases, noMatchingWithdrawals, priceErrors } = await calculate(txs)
+const { matched, unmatched, income, usdBuys, airdrops, usdDeposits, withdrawals, tradeTxs, margin, sales, interest, likeKindExchanges, noAvailablePurchases, noMatchingWithdrawals, priceErrors } = await calculate(txs)
+const salesWithGain = sales.map(sale => Object.assign({}, sale, { gain: sale.buy - sale.cost }))
 
-if (argv.summary) {
+const total = withdrawals.length + matched.length + unmatched.length + usdBuys.length + airdrops.length + usdDeposits.length + income.length + tradeTxs.length + margin.length + interest.length
+console.log('')
+console.log('Withdrawals:', withdrawals.length)
+console.log('Matched Deposits:', matched.length)
+console.log('Unmatched Deposits:', unmatched.length)
+console.log('USD Buys:', usdBuys.length)
+console.log('USD Deposits:', usdDeposits.length)
+console.log('Airdrops', airdrops.length)
+console.log('Income:', income.length)
+console.log('Trades:', tradeTxs.length)
+console.log('Margin Trades:', margin.length)
+console.log('Lending:', interest.length)
+console.log(total === txs.length
+  ? `TOTAL: ${total} ✓`
+  : `✗ TOTAL: ${total}, TXS: ${txs.length}`
+)
+console.log('')
 
-  const stSales = sales.filter(sale => (new Date(normalDate(sale.date)) - new Date(normalDate(sale.dateAcquired))) < 3.154e+10)
-  const ltSales = sales.filter(sale => (new Date(normalDate(sale.date)) - new Date(normalDate(sale.dateAcquired))) >= 3.154e+10)
+console.log('ERRORS')
+console.log('No available purchase:', noAvailablePurchases.length)
+console.log('No matching withdrawals:', noMatchingWithdrawals.length)
+console.log('Price errors:', priceErrors.length)
+console.log('')
 
-  const sum = withdrawals.length + matched.length + unmatched.length + usdBuys.length + airdrops.length + usdDeposits.length + income.length + tradeTxs.length + margin.length + lending.length
+const outputByYear = async (year, sales, interest, likeKindExchanges) => {
+
+  const stSales = sales.filter(isShortTerm)
+  const ltSales = sales.filter(sale => !isShortTerm(sale))
+
+  const stSalesYear = stSales.filter(sale => sale.date.includes(year))
+  const ltSalesYear = ltSales.filter(sale => sale.date.includes(year))
+  const interestYear = interest.filter(tx => tx.date.includes(year))
+  const likeKindExchangesYear = likeKindExchanges.filter(tx => tx.date.includes(year))
+
+  // summary
+  console.log(`${year} Like-Kind Exchanges (${likeKindExchangesYear.length}):`, formatPrice(likeKindExchangesYear.map(sale => sale.buy - sale.cost).reduce(sum, 0)))
+  console.log(`${year} Short-Term Sales (${stSalesYear.length}):`, formatPrice(stSalesYear.map(sale => sale.gain).reduce(sum, 0)))
+  console.log(`${year} Long-Term Sales (${ltSalesYear.length}):`, formatPrice(ltSalesYear.map(sale => sale.gain).reduce(sum, 0)))
+  console.log(`${year} Interest (${interestYear.length}):`, formatPrice(interestYear.map(tx => tx.interestEarnedUSD).reduce(sum, 0)))
   console.log('')
-  console.log('Withdrawals:', withdrawals.length)
-  console.log('Matched Deposits:', matched.length)
-  console.log('Unmatched Deposits:', unmatched.length)
-  console.log('USD Buys:', usdBuys.length)
-  console.log('USD Deposits:', usdDeposits.length)
-  console.log('Airdrops', airdrops.length)
-  console.log('Income:', income.length)
-  console.log('Trades:', tradeTxs.length)
-  console.log('Margin Trades:', margin.length)
-  console.log('Lending:', lending.length)
-  console.log(sum === txs.length
-    ? `TOTAL: ${sum} ✓`
-    : `✗ TOTAL: ${sum}, TXS: ${txs.length}`
-  )
-  console.log('')
 
-  console.log('ERRORS')
-  console.log('No available purchase:', noAvailablePurchases.length)
-  console.log('No matching withdrawals:', noMatchingWithdrawals.length)
-  console.log('Price errors:', priceErrors.length)
-  console.log('')
-
-  console.log('Like-Kind Exchanges:', likeKindExchanges.length)
-  console.log('Unrealized Gains from Like-Kind Exchanges:', formatPrice(likeKindExchanges.map(sale => sale.buy - sale.cost).reduce((x,y) => x+y)))
-  console.log('Short-Term Sales', stSales.length)
-  console.log('Long-Term Sales', ltSales.length)
-  // use buy because a USD sale "buys" a certain amount of USD, so buy - cost is the profit
-  console.log('Total Gains from Short-Term Sales:', formatPrice(stSales.map(sale => sale.buy - sale.cost).reduce((x,y) => x+y, 0)))
-  console.log('Total Gains from Long-Term Sales:', formatPrice(ltSales.map(sale => sale.buy - sale.cost).reduce((x,y) => x+y, 0)))
-  console.log('')
+  // output csv
+  if (argv.output) {
+    const dir = `${argv.output}/${year}/`
+    await mkdir(dir)
+    if (likeKindExchangesYear.length) {
+      fs.writeFileSync(`${dir}like-kind-exchanges-${year}.csv`, toCSV(likeKindExchangesYear, [
+        { value: 'date', label: 'Date Exchanged' },
+        { value: 'dateAcquired', label: 'Date Purchased' },
+        { value: 'sell', label: 'From Amount' },
+        { value: 'sellCur', label: 'From Asset' },
+        { value: 'buy', label: 'To Amount' },
+        { value: 'buyCur', label: 'To Asset' },
+        { value: 'cost', label: 'Cost Basis (USD)' }
+      ]))
+    }
+    if (stSalesYear.length) {
+      fs.writeFileSync(`${dir}sales-short-term-${year}.csv`, toCSV(stSalesYear, [
+        { value: 'date', label: 'Date Sold' },
+        { value: 'dateAcquired', label: 'Date Acquired' },
+        { value: 'sell', label: 'Sell' },
+        { value: 'sellCur', label: 'Sell Currency' },
+        { value: 'buy', label: 'Sell (USD)' },
+        { value: 'cost', label: 'Cost Basis (USD)' },
+        { value: 'gain', label: 'Gain (USD)' }
+      ]))
+    }
+    if (ltSalesYear.length) {
+      fs.writeFileSync(`${dir}sales-long-term-${year}.csv`, toCSV(ltSalesYear, [
+        { value: 'date', label: 'Date Sold' },
+        { value: 'dateAcquired', label: 'Date Acquired' },
+        { value: 'sell', label: 'Sell' },
+        { value: 'sellCur', label: 'Sell Currency' },
+        { value: 'buy', label: 'Sell (USD)' },
+        { value: 'cost', label: 'Cost Basis (USD)' },
+        { value: 'gain', label: 'Gain (USD)' }
+      ]))
+    }
+    if (interestYear.length) {
+      fs.writeFileSync(`${dir}interest-${year}.csv`, toCSV(interestYear, [
+        { value: 'date', label: 'Date' },
+        { value: 'loanAmount', label: 'Loan Amount' },
+        { value: 'loanCurrency', label: 'Loan Currency' },
+        { value: 'interestEarnedUSD', label: 'Interest Earned (USD)' }
+      ]))
+    }
+  }
 }
+
+outputByYear(2016, salesWithGain, interest, likeKindExchanges)
+outputByYear(2017, salesWithGain, interest, likeKindExchanges)
+outputByYear(2018, salesWithGain, interest, likeKindExchanges)
 
 })()

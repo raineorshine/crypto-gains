@@ -6,13 +6,14 @@ Historical prices provided by the [cryptocompare API](https://min-api.cryptocomp
 Usage: index.js <data.csv> [options]
 
 Options:
-  --help       Show help                                               [boolean]
-  --version    Show version number                                     [boolean]
-  --exchange   Exchange for price lookups.                   [default: "cccagg"]
-  --mockprice  Mock price in place of cryptocompare lookups.
-  --limit      Limit number of transactions processed.       [default: Infinity]
-  --summary    Show a summary of results.
-  --verbose    Show more errors and warnings.
+  --help        Show help                                              [boolean]
+  --version     Show version number                                    [boolean]
+  --accounting  Accounting type: fifo/lifo.                    [default: "fifo"]
+  --exchange    Exchange for price lookups.                  [default: "cccagg"]
+  --limit       Limit number of transactions processed.      [default: Infinity]
+  --mockprice   Mock price in place of cryptocompare lookups.
+  --output      Output directory for results.
+  --verbose     Show more errors and warnings.
 ```
 
 ## Installation
