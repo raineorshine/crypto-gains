@@ -358,6 +358,11 @@ const calculate = async txs => {
         else if (findMatchingWithdrawal(tx, group)) {
           matched.push(tx)
         }
+        // presale
+        else if (tx.CurBuy === 'SALT' && tx['Trade Date'].includes('2017')) {
+          matched.push(tx)
+          stock.deposit(+tx.Buy, tx.CurBuy, tx.Buy * 0.25, tx['Trade Date'])
+        }
         // otherwise we have an unmatched transaction and need to fallback to the day-of price
         // and add it to the stock
         else {
