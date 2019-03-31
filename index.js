@@ -68,8 +68,11 @@ const isShortTerm = sale =>
 
 // checks if two txs are within a margin of error from each other
 const closeEnough = (tx1, tx2) => {
-  return Math.abs(z(tx1.Buy) - z(tx2.Sell)) <= 0.02 &&
-         Math.abs(z(tx1.Sell) - z(tx2.Buy)) <= 0.02
+  const errorRange = tx1.CurBuy === 'BTC' ? 0.2 :
+    tx1.CurBuy === 'ETH' ? 0.2 :
+    0.5
+  return Math.abs(z(tx1.Buy) - z(tx2.Sell)) < errorRange &&
+         Math.abs(z(tx1.Sell) - z(tx2.Buy)) < errorRange
 }
 
 // checks if two transactions are a Deposit/Withdrawal match
