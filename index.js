@@ -377,8 +377,9 @@ const calculate = async txs => {
           matched.push(tx)
           stock.deposit(+tx.Buy, tx.CurBuy, tx.Buy * 0.25, tx['Trade Date'])
         }
-        // BCH fork
-        else if (tx.CurBuy === 'BCH' && tx['Trade Date'].includes('2017')) {
+        // Forks: BCH, ETC
+        else if (tx.CurBuy === 'BCH' && tx['Trade Date'].includes('2017') ||
+          tx.CurBuy === 'ETC' && tx['Trade Date'].includes('2016')) {
           matched.push(tx)
           stock.deposit(+tx.Buy, tx.CurBuy, 0, tx['Trade Date'])
         }
