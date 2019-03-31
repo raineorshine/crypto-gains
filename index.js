@@ -350,7 +350,7 @@ const calculate = async txs => {
         // USD deposits have as-is cost basis
         if (tx.CurBuy === 'USD') {
           usdDeposits.push(tx)
-          stock.deposit(+tx.Buy, 'USD', tx.Buy, tx['Trade Date'])
+          stock.deposit(+tx.Buy, 'USD', +tx.Buy, tx['Trade Date'])
         }
         // air drops have cost basis of 0
         else if (tx.CurBuy in secure.airdropSymbols) {
@@ -369,11 +369,6 @@ const calculate = async txs => {
         // otherwise we have an unmatched transaction and need to fallback to the day-of price
         // and add it to the stock
         else {
-          const message = `WARNING: No matching withdrawal for deposit of ${tx.Buy} ${tx.CurBuy} on ${tx['Trade Date']}. Using historical price.`
-          if (argv.verbose) {
-            console.warn(message)
-          }
-          noMatchingWithdrawals.push(message)
 
           let p
           try {
@@ -384,15 +379,26 @@ const calculate = async txs => {
             priceErrors.push(e.message)
           }
 
-          const newTx = Object.assign({}, tx, {
-            Type: 'Income',
-            Comment: 'Cost Basis',
-            Price: p
-          })
+          // do not report missing USDT purchases as warnings, since the cost basis is invariant
+          if (tx.CurBuy === 'USDT') {
+            matched.push(tx)
+          }
+          else {
+            const message = `WARNING: No matching withdrawal for deposit of ${tx.Buy} ${tx.CurBuy} on ${tx['Trade Date']}. Using historical price.`
+            if (argv.verbose) {
+              console.log(message)
+            }
+            noMatchingWithdrawals.push(message)
 
-          unmatched.push(newTx)
+            const newTx = Object.assign({}, tx, {
+              Type: 'Income',
+              Comment: 'Cost Basis',
+              Price: p
+            })
 
-          // cost basis based on day-of price
+            unmatched.push(newTx)
+          }
+
           stock.deposit(+tx.Buy, tx.CurBuy, tx.Buy * p, tx['Trade Date'])
         }
 
