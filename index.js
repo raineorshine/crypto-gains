@@ -163,6 +163,16 @@ const calculate = async txs => {
     for (let i in group) {
       const tx = group[i]
 
+      // convert ICO's to Trade
+      // the matching withdrawal of CurSell can be ignored since it does no affect cost basis
+      const ico = secure.icos.find(ico => +ico.Buy === +tx.Buy && ico.CurBuy === tx.CurBuy && ico.Date === tx['Trade Date'])
+      if(ico) {
+        tx.Type = 'Trade'
+        tx.Sell = ico.Sell
+        tx.CurSell = ico.CurSell
+        tx.Comment = 'ICO'
+      }
+
       // LENDING
 
       // must go before Trade
@@ -301,6 +311,7 @@ const calculate = async txs => {
       // TRADE
 
       // crypto-to-crypto trade
+      // include ICOs
       else if(tx.Type === 'Trade') {
         tradeTxs.push(tx)
 
@@ -343,9 +354,9 @@ const calculate = async txs => {
         stock.deposit(+tx.Buy, tx.CurBuy, tx.Buy * p, tx['Trade Date'])
       }
 
-     // DEPOSIT
+      // DEPOSIT
 
-     else if (tx.Type === 'Deposit') {
+      else if (tx.Type === 'Deposit') {
 
         // USD deposits have as-is cost basis
         if (tx.CurBuy === 'USD') {
