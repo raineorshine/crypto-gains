@@ -110,11 +110,13 @@ const numberWithCommas = n => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 
 const formatPrice = n => '$' + numberWithCommas(Math.round(n * 100)/100)
 
-// USD buy = crypto sale
-const isUsdBuy = trade =>
+const isCryptoToUsd = trade =>
   (trade.Type === 'Withdrawal' && trade.Exchange === 'Coinbase' && !trade.Fee && trade.Sell < 4) || // shift card (infer)
   (trade.Type === 'Trade' && trade.CurBuy === 'USD') ||
   trade.Type === 'Spend'
+
+const isUsdToCrypto = trade =>
+  trade.Type === 'Trade' && trade.CurSell === 'USD'
 
 // find a withdrawal in the given list of transactions that matches the given deposit
 const findMatchingWithdrawal = (deposit, txs) =>
@@ -133,7 +135,8 @@ const calculate = async txs => {
   const matched = []
   const unmatched = []
   const income = []
-  const usdBuys = []
+  const cryptoToUsd = []
+  const usdToCrypto = []
   const usdDeposits = []
   const withdrawals = []
   const margin = []
@@ -210,7 +213,7 @@ const calculate = async txs => {
 
       // MARGIN
 
-      // must go before isUsdBuy
+      // must go before isCryptoToUsd
       // some Bitfinex margin trades are reported as Lost
       // similar to Trade processing, but does not update stock
       else if(/margin/i.test(tx['Trade Group']) || tx.Type === 'Lost') {
@@ -247,8 +250,8 @@ const calculate = async txs => {
 
       // USD buy = crypto sale
       // must go before Trade and Withdrawal
-      else if(isUsdBuy(tx)) {
-        usdBuys.push(tx)
+      else if(isCryptoToUsd(tx)) {
+        cryptoToUsd.push(tx)
 
         // update cost basis
         try {
@@ -281,6 +284,15 @@ const calculate = async txs => {
             throw e
           }
         }
+      }
+
+      // PURCHASE
+
+      // usd-to-crypto
+      // must go before crypto-to-crypto trade
+      else if(isUsdToCrypto(tx)) {
+        usdToCrypto.push(tx)
+        stock.deposit(+tx.Buy, tx.CurBuy, +tx.Sell, tx['Trade Date'])
       }
 
       // TRADE
@@ -392,7 +404,7 @@ const calculate = async txs => {
     }
   }
 
-  return { matched, unmatched, income, usdBuys, airdrops, usdDeposits, withdrawals, tradeTxs, margin, sales, interest, likeKindExchanges, noAvailablePurchases, noMatchingWithdrawals, priceErrors }
+  return { matched, unmatched, income, cryptoToUsd, usdToCrypto, airdrops, usdDeposits, withdrawals, tradeTxs, margin, sales, interest, likeKindExchanges, noAvailablePurchases, noMatchingWithdrawals, priceErrors }
 }
 
 
@@ -420,15 +432,16 @@ const file = argv._[0]
 const input = fixHeader(fs.readFileSync(file, 'utf-8'))
 const txs = Array.prototype.slice.call(await csvtojson().fromString(input), 0, argv.limit) // convert to true array
 
-const { matched, unmatched, income, usdBuys, airdrops, usdDeposits, withdrawals, tradeTxs, margin, sales, interest, likeKindExchanges, noAvailablePurchases, noMatchingWithdrawals, priceErrors } = await calculate(txs)
+const { matched, unmatched, income, cryptoToUsd, usdToCrypto, airdrops, usdDeposits, withdrawals, tradeTxs, margin, sales, interest, likeKindExchanges, noAvailablePurchases, noMatchingWithdrawals, priceErrors } = await calculate(txs)
 const salesWithGain = sales.map(sale => Object.assign({}, sale, { gain: sale.buy - sale.cost }))
 
-const total = withdrawals.length + matched.length + unmatched.length + usdBuys.length + airdrops.length + usdDeposits.length + income.length + tradeTxs.length + margin.length + interest.length
+const total = withdrawals.length + matched.length + unmatched.length + cryptoToUsd.length + usdToCrypto.length + airdrops.length + usdDeposits.length + income.length + tradeTxs.length + margin.length + interest.length
 console.log('')
 console.log('Withdrawals:', withdrawals.length)
 console.log('Matched Deposits:', matched.length)
 console.log('Unmatched Deposits:', unmatched.length)
-console.log('USD Buys:', usdBuys.length)
+console.log('Crypto-to-USD:', cryptoToUsd.length)
+console.log('USD-to-Crypto:', usdToCrypto.length)
 console.log('USD Deposits:', usdDeposits.length)
 console.log('Airdrops', airdrops.length)
 console.log('Income:', income.length)
@@ -458,7 +471,8 @@ const outputByYear = async (year, sales, interest, likeKindExchanges) => {
   const likeKindExchangesYear = likeKindExchanges.filter(tx => tx.date.includes(year))
 
   // summary
-  console.log(`${year} Like-Kind Exchanges (${likeKindExchangesYear.length}):`, formatPrice(likeKindExchangesYear.map(sale => sale.buy - sale.cost).reduce(sum, 0)))
+  // cannot calculate unrealized gains from like-kind exchanges without fetching the price of tx.Buy and converting it to USD
+  console.log(`${year} Like-Kind Exchanges (${likeKindExchangesYear.length})`)
   console.log(`${year} Short-Term Sales (${stSalesYear.length}):`, formatPrice(stSalesYear.map(sale => sale.gain).reduce(sum, 0)))
   console.log(`${year} Long-Term Sales (${ltSalesYear.length}):`, formatPrice(ltSalesYear.map(sale => sale.gain).reduce(sum, 0)))
   console.log(`${year} Interest (${interestYear.length}):`, formatPrice(interestYear.map(tx => tx.interestEarnedUSD).reduce(sum, 0)))
