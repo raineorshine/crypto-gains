@@ -326,7 +326,7 @@ const calculate = async txs => {
         }
 
         try {
-          const before2018 = (new Date(normalDate(tx['Trade Date']))).getFullYear() < 2018
+          const before2018 = argv.likekind && (new Date(normalDate(tx['Trade Date']))).getFullYear() < 2018
           const tradeExchanges = stock.trade(+tx.Sell, tx.CurSell, +tx.Buy, tx.CurBuy, tx['Trade Date'], before2018 ? null : p, argv.accounting)
             // insert cost of new asset for accounting purposes
             .map(sale => Object.assign({}, sale, { newCost: sale.buy * p }))
@@ -460,6 +460,7 @@ const argv = yargs
   .demandCommand(1)
   .option('accounting', { default: 'fifo', describe: 'Accounting type: fifo/lifo.' })
   .option('exchange', { default: 'cccagg', describe: 'Exchange for price lookups.' })
+  .option('likekind', { default: true, describe: 'Allow like-kind exchange before 2018.' })
   .option('limit', { default: Infinity, describe: 'Limit number of transactions processed.' })
   .option('mockprice', { describe: 'Mock price in place of cryptocompare lookups.' })
   .option('output', { describe: 'Output directory for results.' })

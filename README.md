@@ -10,6 +10,7 @@ Options:
   --version     Show version number                                    [boolean]
   --accounting  Accounting type: fifo/lifo.                    [default: "fifo"]
   --exchange    Exchange for price lookups.                  [default: "cccagg"]
+  --likekind    Allow like-kind exchange before 2018.            [default: true]
   --limit       Limit number of transactions processed.      [default: Infinity]
   --mockprice   Mock price in place of cryptocompare lookups.
   --output      Output directory for results.
