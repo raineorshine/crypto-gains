@@ -316,9 +316,21 @@ const calculate = async txs => {
         tradeTxs.push(tx)
 
         // update cost basis
+        let p
+        try {
+          p = await price(tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])))
+        }
+        catch (e) {
+          console.error(`Error fetching price`, e.message)
+          priceErrors.push(tx)
+        }
+
         try {
           const before2018 = (new Date(normalDate(tx['Trade Date']))).getFullYear() < 2018
-          const tradeExchanges = stock.trade(+tx.Sell, tx.CurSell, +tx.Buy, tx.CurBuy, tx['Trade Date'], before2018 ? null : await price(tx.CurBuy, 'USD', day(normalDate(tx['Trade Date']))), argv.accounting)
+          const tradeExchanges = stock.trade(+tx.Sell, tx.CurSell, +tx.Buy, tx.CurBuy, tx['Trade Date'], before2018 ? null : p, argv.accounting)
+            // insert cost of new asset for accounting purposes
+            .map(sale => Object.assign({}, sale, { newCost: sale.buy * p }))
+
           ;(before2018 ? likeKindExchanges : sales)
             .push(...tradeExchanges)
         }
@@ -521,7 +533,8 @@ const outputByYear = async (year, sales, interest, likeKindExchanges) => {
         { value: 'sellCur', label: 'From Asset' },
         { value: 'buy', label: 'To Amount' },
         { value: 'buyCur', label: 'To Asset' },
-        { value: 'cost', label: 'Cost Basis (USD)' }
+        { value: 'cost', label: 'Original Cost Basis (USD)' },
+        { value: 'newCost', label: 'New Cost Basis (USD)' },
       ]))
     }
     if (stSalesYear.length) {
