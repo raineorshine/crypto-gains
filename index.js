@@ -270,7 +270,7 @@ const calculate = async txs => {
         try {
           // Trade to USD
           if (tx.Type === 'Trade') {
-            sales.push(...stock.trade(+tx.Sell, tx.CurSell, +tx.Buy, 'USD', tx['Trade Date'], null, argv.accounting))
+            sales.push(...stock.trade(+tx.Sell, tx.CurSell, +tx.Buy, 'USD', tx['Trade Date'], null, null, argv.accounting))
           }
           // Shift: we have to calculate the historical USD sale value since Coinbase only provides the token price
           else {
@@ -283,7 +283,7 @@ const calculate = async txs => {
               priceErrors.push(tx)
             }
 
-            sales.push(...stock.trade(+tx.Sell, tx.CurSell, tx.Sell * p, 'USD', tx['Trade Date'], null, argv.accounting))
+            sales.push(...stock.trade(+tx.Sell, tx.CurSell, tx.Sell * p, 'USD', tx['Trade Date'], null, null, argv.accounting))
           }
         }
         catch (e) {
@@ -327,7 +327,7 @@ const calculate = async txs => {
 
         try {
           const before2018 = argv.likekind && (new Date(normalDate(tx['Trade Date']))).getFullYear() < 2018
-          const tradeExchanges = stock.trade(+tx.Sell, tx.CurSell, +tx.Buy, tx.CurBuy, tx['Trade Date'], before2018 ? null : p, argv.accounting)
+          const tradeExchanges = stock.trade(+tx.Sell, tx.CurSell, +tx.Buy, tx.CurBuy, tx['Trade Date'], p, !before2018, argv.accounting)
             // insert cost of new asset for accounting purposes
             .map(sale => Object.assign({}, sale, { newCost: sale.buy * p }))
 
@@ -516,7 +516,7 @@ const outputByYear = async (year, sales, interest, likeKindExchanges) => {
 
   // summary
   // cannot calculate unrealized gains from like-kind exchanges without fetching the price of tx.Buy and converting it to USD
-  console.log(`${year} Like-Kind Exchanges (${likeKindExchangesYear.length})`)
+  console.log(`${year} Like-Kind Exchange Deferred Gains (${likeKindExchangesYear.length})`, formatPrice(likeKindExchangesYear.map(sale => sale.deferredGains).reduce(sum, 0)))
   console.log(`${year} Short-Term Sales (${stSalesYear.length}):`, formatPrice(stSalesYear.map(sale => sale.gain).reduce(sum, 0)))
   console.log(`${year} Long-Term Sales (${ltSalesYear.length}):`, formatPrice(ltSalesYear.map(sale => sale.gain).reduce(sum, 0)))
   console.log(`${year} Interest (${interestYear.length}):`, formatPrice(interestYear.map(tx => tx.interestEarnedUSD).reduce(sum, 0)))
@@ -534,8 +534,8 @@ const outputByYear = async (year, sales, interest, likeKindExchanges) => {
         { value: 'sellCur', label: 'From Asset' },
         { value: 'buy', label: 'To Amount' },
         { value: 'buyCur', label: 'To Asset' },
-        { value: 'cost', label: 'Original Cost Basis (USD)' },
-        { value: 'newCost', label: 'New Cost Basis (USD)' },
+        { value: 'cost', label: 'Cost Basis (USD)' },
+        { value: 'deferredGains', label: 'Deferred Gains (USD)' }
       ]))
     }
     if (stSalesYear.length) {

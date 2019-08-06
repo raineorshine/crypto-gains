@@ -51,9 +51,10 @@ const Stock = () => {
     return exchangeLots
   }
 
-  // new cost basis sets the cost basis of the new currency (i.e. treats it as a taxable sale)
+  // newCostBasis is used to calculate the deferred gains
+  // if isSale, new cost basis sets the cost basis of the new currency (i.e. treats it as a taxable sale)
   // otherwise the cost basis is preserved
-  const trade = (sell, sellCur, buy, buyCur, date, newCostBasis, type = 'fifo') => {
+  const trade = (sell, sellCur, buy, buyCur, date, newCostBasis, isSale, type = 'fifo') => {
     let pending = sell
     const exchanges = []
     while (pending > 0) {
@@ -93,8 +94,9 @@ const Stock = () => {
       lots.push({
         amount: buyNew,
         cur: buyCur,
-        cost: newCostBasis != null ? newCostBasis : cost, // give the new currency a new cost basis if provided
-        date: newCostBasis != null || !lot ? date : lot.date
+        cost: isSale ? newCostBasis : cost, // give the new currency a new cost basis if provided
+        deferredGains: (newCostBasis || cost) - cost,
+        date: isSale || !lot ? date : lot.date
       })
 
       exchanges.push({
@@ -103,6 +105,7 @@ const Stock = () => {
         sell: lotDebit,
         sellCur,
         cost,
+        deferredGains: (newCostBasis || cost) - cost - (lot.deferredGains || 0),
         date, // include this even though it is an argument in order to make concatenated exchanges easier
         dateAcquired: lot ? lot.date : date
       })
