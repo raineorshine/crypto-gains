@@ -21,4 +21,4 @@ Options:
 
 1. Clone the repo.
 2. Rename sample-secure.json to secure.json and add valid API keys.
-3. [sample-data.csv](https://github.com/raineorshine/cost-basis-filler/blob/master/sample-data.csv) is from [cointracking.info/trades](https://cointracking.info/trades.php).
+3. [sample-data.csv](https://github.com/raineorshine/cost-basis-filler/blob/master/sample-data.csv) is from [cointracking.info/trades](https://cointracking.info/trades.php). *must be sorted by trade date ascending*
