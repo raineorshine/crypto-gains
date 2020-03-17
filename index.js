@@ -571,8 +571,8 @@ const outputByYear = async (year, sales, interest, likeKindExchanges) => {
   }
 }
 
-outputByYear(2016, salesWithGain, interest, likeKindExchanges)
-outputByYear(2017, salesWithGain, interest, likeKindExchanges)
-outputByYear(2018, salesWithGain, interest, likeKindExchanges)
+for (y = 2016; y <= (new Date).getFullYear(); y++) {
+  outputByYear(y, salesWithGain, interest, likeKindExchanges)
+}
 
 })()
