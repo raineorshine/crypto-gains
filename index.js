@@ -125,7 +125,6 @@ const isUsdToCrypto = trade =>
 const findMatchingWithdrawal = (deposit, txs) =>
   txs.find(tx => match(deposit, tx))
 
-
 /****************************************************************
 * CALCULATE
 *****************************************************************/
@@ -155,6 +154,22 @@ const calculate = async txs => {
 
   const txsByDay = groupByDay(txs)
 
+  // pushes price errors to priceErrors instead of throwing
+  const tryPrice = async (tx, ...args) => {
+    let p
+    try {
+      // Poloniex market does not exist for some coin pairs
+      p = await price(...args)
+    }
+    catch(e) {
+      console.error(`Error fetching price`, e.message)
+      priceErrors.push(tx)
+    }
+
+    return p
+  }
+
+
   // loop through each day
   for (let key in txsByDay) {
     const group = txsByDay[key]
@@ -178,40 +193,32 @@ const calculate = async txs => {
       // must go before Trade
       if(/lending/i.test(tx['Trade Group'])) {
 
-        let p
-        try {
-          // Poloniex market does not exist for some coin pairs
-          p = await price(tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])))
+        let p = await tryPrice(tx, tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])))
 
-          // Cryptocompare returns erroneous prices for BTS on some days. When a price that is out of range is detected, set it to 0.2 which is a reasonable estimate for that time.
-          // e.g. https://min-api.cryptocompare.com/data/pricehistorical?fsym=BTS&tsyms=USD&ts=1495756800
-          /*
-          1495756800 208.98
-          1495843200 173.07
-          1495929600 255.73
-          1496016000 252.73
-          1496102400 275.6
-          1496188800 267.5
-          1496275200 303.7
-          1496361600 343.6
-          1496448000 367.5
-          1496534400 321.38
-          1496620800 329.67
-          1496707200 360.55
-          1496793600 214.17
-          1496880000 235.96
-          1496966400 343.52
-          1497139200 489.26
-          1497312000 546.67
-          1497916800 371.61
-          */
-          if (tx.CurBuy === 'BTS' && p > 10) {
-            p = 0.2
-          }
-        }
-        catch(e) {
-          console.error(`Error fetching price`, e.message)
-          priceErrors.push(tx)
+        // Cryptocompare returns erroneous prices for BTS on some days. When a price that is out of range is detected, set it to 0.2 which is a reasonable estimate for that time.
+        // e.g. https://min-api.cryptocompare.com/data/pricehistorical?fsym=BTS&tsyms=USD&ts=1495756800
+        /*
+        1495756800 208.98
+        1495843200 173.07
+        1495929600 255.73
+        1496016000 252.73
+        1496102400 275.6
+        1496188800 267.5
+        1496275200 303.7
+        1496361600 343.6
+        1496448000 367.5
+        1496534400 321.38
+        1496620800 329.67
+        1496707200 360.55
+        1496793600 214.17
+        1496880000 235.96
+        1496966400 343.52
+        1497139200 489.26
+        1497312000 546.67
+        1497916800 371.61
+        */
+        if (tx.CurBuy === 'BTS' && p > 10) {
+          p = 0.2
         }
 
         // simulate USD Buy
@@ -274,15 +281,7 @@ const calculate = async txs => {
           }
           // Shift: we have to calculate the historical USD sale value since Coinbase only provides the token price
           else {
-            let p = 0
-            try {
-              p = await price(tx.CurSell, 'USD', day(normalDate(tx['Trade Date'])), tx.Exchange)
-            }
-            catch(e) {
-              console.error(`Error fetching price`, e.message)
-              priceErrors.push(tx)
-            }
-
+            const p = await tryPrice(tx, tx.CurSell, 'USD', day(normalDate(tx['Trade Date'])), tx.Exchange) || 0
             sales.push(...stock.trade(+tx.Sell, tx.CurSell, tx.Sell * p, 'USD', tx['Trade Date'], null, null, argv.accounting))
           }
         }
@@ -316,14 +315,7 @@ const calculate = async txs => {
         tradeTxs.push(tx)
 
         // update cost basis
-        let p
-        try {
-          p = await price(tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])))
-        }
-        catch (e) {
-          console.error(`Error fetching price`, e.message)
-          priceErrors.push(tx)
-        }
+        const p = await tryPrice(tx, tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])))
 
         try {
           const before2018 = argv.likekind && (new Date(normalDate(tx['Trade Date']))).getFullYear() < 2018
@@ -354,14 +346,7 @@ const calculate = async txs => {
         income.push(tx)
 
         // update cost basis
-        let p = 0
-        try {
-          p = await price(tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])))
-        }
-        catch(e) {
-          console.error(`Error fetching price`, e.message)
-          priceErrors.push(tx)
-        }
+        const p = await tryPrice(tx, tx.CurBuy, 'USD', day(normalDate(tx['Trade Date']))) || 0
 
         stock.deposit(+tx.Buy, tx.CurBuy, tx.Buy * p, tx['Trade Date'])
       }
@@ -399,14 +384,7 @@ const calculate = async txs => {
         // and add it to the stock
         else {
 
-          let p
-          try {
-            // per-day memoization
-            p = await price(tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])))
-          }
-          catch (e) {
-            priceErrors.push(e.message)
-          }
+          const p = await tryPrice(tx, tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])))
 
           // do not report missing USDT purchases as warnings, since the cost basis is invariant
           if (tx.CurBuy === 'USDT') {
