@@ -1,3 +1,15 @@
 {
-  "cryptoCompareApiKey": ""
+  "cryptoCompareApiKey": "",
+  "icos": [
+    {
+      "Buy": "1000",
+      "CurBuy": "SNT",
+      "Sell": "10",
+      "CurSell": "ETH",
+      "Date": "20.06.2017 17:10"
+    },
+  ],
+  "airdropSymbols": [
+    "HuobiAir"
+  ]
 }

@@ -125,6 +125,13 @@ const isUsdToCrypto = trade =>
 const findMatchingWithdrawal = (deposit, txs) =>
   txs.find(tx => match(deposit, tx))
 
+// convert airdropSymbols from array to object for O(1) lookup
+const airdropIndex = secure.airdropSymbols.reduce((accum, cur) => ({
+  ...accum,
+  [cur.toLowerCase()]: 1
+}), {})
+const isAirdrop = symbol => symbol.toLowerCase() in airdropIndex
+
 /****************************************************************
 * CALCULATE
 *****************************************************************/
@@ -361,7 +368,7 @@ const calculate = async txs => {
           stock.deposit(+tx.Buy, 'USD', +tx.Buy, tx['Trade Date'])
         }
         // air drops have cost basis of 0
-        else if (tx.CurBuy in secure.airdropSymbols) {
+        else if (isAirdrop(tx.CurBuy)) {
           airdrops.push(tx)
           stock.deposit(+tx.Buy, tx.CurBuy, 0, tx['Trade Date'])
         }
