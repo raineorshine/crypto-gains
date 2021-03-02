@@ -21,4 +21,59 @@ Options:
 
 1. Clone the repo.
 2. Rename sample-secure.json to secure.json and add valid API keys, icos (optional), and airdrop tokens to ignore (optional)
-3. [sample-data.csv](https://github.com/raineorshine/cost-basis-filler/blob/master/sample-data.csv) is from [cointracking.info/trades](https://cointracking.info/trades.php). *must be sorted by trade date ascending*
+
+## Data Format
+
+- Use data format from [cointracking.info/trades](https://cointracking.info/trades.php)
+- Must be sorted by trade date ascending
+- See [sample-data.csv](https://github.com/raineorshine/cost-basis-filler/blob/master/sample-data.csv) 
+
+Columns:
+
+```
+,Type,Buy,Cur.,Sell,Cur.,Exchange,Trade Group,Comment,Trade Date
+```
+
+## Usage
+
+```sh
+$ node index.js --accounting lifo trades.csv 
+
+Withdrawals: 449
+Matched Deposits: 755
+Unmatched Deposits: 399
+Crypto-to-USD: 3496
+USD-to-Crypto: 139
+USD Deposits: 12
+Airdrops 127
+Income: 134
+Trades: 3682
+Margin Trades: 974
+Lending: 698
+TOTAL: 10865 ✓
+
+ERRORS
+No available purchase: 3
+No matching withdrawals: 399
+Price errors: 0
+
+2016 Like-Kind Exchange Deferred Gains (238) $10,000
+2016 Short-Term Sales (622): $2,000
+2016 Long-Term Sales (0): $2,000
+2016 Interest (0): $0
+
+2017 Like-Kind Exchange Deferred Gains (5628) $20,000
+2017 Short-Term Sales (2437): $10,000
+2017 Long-Term Sales (340): $12,000
+2017 Interest (674): $5,000
+
+2018 Like-Kind Exchange Deferred Gains (0) $0
+2018 Short-Term Sales (1729): $20,000
+2018 Long-Term Sales (343): $4,000
+2018 Interest (24): $50
+
+2019 Like-Kind Exchange Deferred Gains (0) $0
+2019 Short-Term Sales (80): $-10,000
+2019 Long-Term Sales (0): $0
+2019 Interest (0): $0
+```
