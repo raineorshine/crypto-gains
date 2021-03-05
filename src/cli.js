@@ -9,7 +9,7 @@ const Stock = require('./stock.js')
 const cryptogains = require('./index.js')
 
 /** Loads a trade history file in Cointracking or Kraken format. */
-const loadTradeHistoryFile = file => {
+const loadTradeHistoryFile = async file => {
   const cointrackingColumns = ['Type','Buy','Cur.','Sell','Cur.','Exchange','Trade Group','Comment','Trade Date']
   const krakenColumns = ['txid','ordertxid','pair','time','type','ordertype','price','cost','fee','vol','margin','misc','ledgers']
   const text = fs.readFileSync(file, 'utf-8')
@@ -17,7 +17,7 @@ const loadTradeHistoryFile = file => {
 
   // CoinTracking
   if (cointrackingColumns.every(col => headerColumns.includes(col))) {
-    return fixHeader(text)
+    return [...await csvtojson().fromString(fixHeader(text))]
   }
   // Kraken
   else if (krakenColumns.every(col => headerColumns.includes(col))) {
@@ -39,9 +39,8 @@ const loadTrades = async inputPath => {
     error('tradeGroups')
   }
   else {
-    const input = loadTradeHistoryFile(inputPath)
-    const txs = Array.prototype.slice.call(await csvtojson().fromString(input), 0, argv.limit)
-    return txs
+    const txs = await loadTradeHistoryFile(inputPath)
+    return txs.slice(0, argv.limit)
   }
 }
 
