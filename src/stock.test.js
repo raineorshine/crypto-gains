@@ -1,4 +1,4 @@
-const Stock = require('../stock.js')
+const Stock = require('./stock.js')
 const assert = require('assert')
 const closeEnough = (a, b) => Math.abs(a - b) <= 0.02
 

@@ -4,7 +4,6 @@
   "version": "0.0.0",
   "author": {
     "name": "Raine Revere",
-    "email": "raineorshine@gmail.com",
     "url": "https://github.com/raineorshine"
   },
   "license": "ISC",
@@ -21,6 +20,6 @@
     "mocha": "^5.2.0"
   },
   "scripts": {
-    "test": "mocha"
+    "test": "mocha **/*.test.js"
   }
 }
