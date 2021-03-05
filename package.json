@@ -7,6 +7,9 @@
     "url": "https://github.com/raineorshine"
   },
   "license": "ISC",
+  "bin": {
+    "cryptogains": "bin.js"
+  },
   "dependencies": {
     "csvtojson": "^2.0.8",
     "got": "^9.6.0",

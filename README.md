@@ -37,7 +37,7 @@ Columns:
 ## Usage
 
 ```sh
-$ node index.js --accounting lifo trades.csv 
+$ ./bin.js --accounting lifo trades.csv 
 
 Withdrawals: 449
 Matched Deposits: 755
