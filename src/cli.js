@@ -127,12 +127,19 @@ const outputByYear = async (year, sales, interest, likeKindExchanges) => {
   const interestYear = interest.filter(tx => tx.date.includes(year))
   const likeKindExchangesYear = likeKindExchanges.filter(tx => tx.date.includes(year))
 
+  const hasTrades = stSalesYear.length > 0 || ltSalesYear.length > 0 || likeKindExchangesYear.length > 0 || interestYear > 0
+  if (!hasTrades) return
+
   // summary
   // cannot calculate unrealized gains from like-kind exchanges without fetching the price of tx.Buy and converting it to USD
-  console.log(`${year} Like-Kind Exchange Deferred Gains (${likeKindExchangesYear.length})`, formatPrice(likeKindExchangesYear.map(sale => sale.deferredGains).reduce(sum, 0)))
+  if (likeKindExchangesYear.length > 0) {
+    console.log(`${year} Like-Kind Exchange Deferred Gains (${likeKindExchangesYear.length})`, formatPrice(likeKindExchangesYear.map(sale => sale.deferredGains).reduce(sum, 0)))
+  }
   console.log(`${year} Short-Term Sales (${stSalesYear.length}):`, formatPrice(stSalesYear.map(sale => sale.gain).reduce(sum, 0)))
   console.log(`${year} Long-Term Sales (${ltSalesYear.length}):`, formatPrice(ltSalesYear.map(sale => sale.gain).reduce(sum, 0)))
-  console.log(`${year} Interest (${interestYear.length}):`, formatPrice(interestYear.map(tx => tx.interestEarnedUSD).reduce(sum, 0)))
+  if (interestYear.length > 0) {
+    console.log(`${year} Interest (${interestYear.length}):`, formatPrice(interestYear.map(tx => tx.interestEarnedUSD).reduce(sum, 0)))
+  }
   console.log('')
 
   // output csv
