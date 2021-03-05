@@ -1,4 +1,5 @@
 const memoize = require('nano-persistent-memoizer')
+const got = require('got')
 const secure = require('../data/secure.json')
 const Stock = require('./stock.js')
 
@@ -155,7 +156,7 @@ const cryptogains = async (txs, options = {}) => {
       // must go before Trade
       if(/lending/i.test(tx['Trade Group'])) {
 
-        let p = await tryPrice(tx, tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])), options)
+        let p = tx.Price || await tryPrice(tx, tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])), options)
 
         // Cryptocompare returns erroneous prices for BTS on some days. When a price that is out of range is detected, set it to 0.2 which is a reasonable estimate for that time.
         // e.g. https://min-api.cryptocompare.com/data/pricehistorical?fsym=BTS&tsyms=USD&ts=1495756800
@@ -208,8 +209,8 @@ const cryptogains = async (txs, options = {}) => {
         let buyPrice, sellPrice
 
         try {
-          buyPrice = buy ? await price(tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])), options) : 0
-          sellPrice = sell ? await price(tx.CurSell, 'USD', day(normalDate(tx['Trade Date'])), options) : 0
+          buyPrice = buy ? tx.Price || await price(tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])), options) : 0
+          sellPrice = sell ? tx.Price || await price(tx.CurSell, 'USD', day(normalDate(tx['Trade Date'])), options) : 0
         }
         catch(e) {
           console.error(`Error fetching price`, e.message)
@@ -243,7 +244,7 @@ const cryptogains = async (txs, options = {}) => {
           }
           // Shift: we have to calculate the historical USD sale value since Coinbase only provides the token price
           else {
-            const p = await tryPrice(tx, tx.CurSell, 'USD', day(normalDate(tx['Trade Date'])), { ...options, exchange: tx.Exchange }) || 0
+            const p = tx.Price || await tryPrice(tx, tx.CurSell, 'USD', day(normalDate(tx['Trade Date'])), { ...options, exchange: tx.Exchange }) || 0
             sales.push(...stock.trade(+tx.Sell, tx.CurSell, tx.Sell * p, 'USD', tx['Trade Date'], null, null, options.accounting))
           }
         }
@@ -277,7 +278,7 @@ const cryptogains = async (txs, options = {}) => {
         tradeTxs.push(tx)
 
         // update cost basis
-        const p = await tryPrice(tx, tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])), options)
+        const p = tx.Price || await tryPrice(tx, tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])), options)
 
         try {
           const before2018 = options.likekind && (new Date(normalDate(tx['Trade Date']))).getFullYear() < 2018
@@ -308,7 +309,7 @@ const cryptogains = async (txs, options = {}) => {
         income.push(tx)
 
         // update cost basis
-        const p = await tryPrice(tx, tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])), options) || 0
+        const p = tx.Price || await tryPrice(tx, tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])), options) || 0
 
         stock.deposit(+tx.Buy, tx.CurBuy, tx.Buy * p, tx['Trade Date'])
       }
@@ -346,7 +347,7 @@ const cryptogains = async (txs, options = {}) => {
         // and add it to the stock
         else {
 
-          const p = await tryPrice(tx, tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])), options)
+          const p = tx.Price || await tryPrice(tx, tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])), options)
 
           // do not report missing USDT purchases as warnings, since the cost basis is invariant
           if (tx.CurBuy === 'USDT') {

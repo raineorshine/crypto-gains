@@ -1,12 +1,17 @@
 const csvtojson = require('csvtojson')
 const fs = require('fs')
-const got = require('got')
 const json2csv = require('json2csv')
 const mkdir = require('make-dir')
 const path = require('path')
 const yargs = require('yargs')
 const Stock = require('./stock.js')
 const cryptogains = require('./index.js')
+
+/** Extracts the currency symbols from a Kraken trading pair. */
+const pair = p => p === 'XETHZUSD' ? { from: 'ETH', to: 'USD' }
+  : p === 'XXBTZUSD' ? { from : 'BTC', to: 'USD' }
+  : p === 'USDCUSD' ? {}
+  : error(`Unrecognized trading pair: ${p}`)
 
 /** Loads a trade history file in Cointracking or Kraken format. */
 const loadTradeHistoryFile = async file => {
@@ -17,11 +22,30 @@ const loadTradeHistoryFile = async file => {
 
   // CoinTracking
   if (cointrackingColumns.every(col => headerColumns.includes(col))) {
-    return [...await csvtojson().fromString(fixHeader(text))]
+    return [...await csvtojson().fromString(fixCointrackingHeader(text))]
   }
   // Kraken
   else if (krakenColumns.every(col => headerColumns.includes(col))) {
-    error('Kraken file not yet supported')
+    return [...await csvtojson().fromString(text)]
+      // convert Kraken schema to Cointracking
+      .map(row => {
+        const { from, to } = pair(row.pair)
+        // ignore USDC -> USD trades
+        if (!from && !to) return null
+        return {
+          Type: row.type === 'buy' || row.type === 'sell' ? 'Trade' : row.type === 'deposit' ? 'Deposit' : row.type,
+          Buy: row.type === ' buy' || row.type === 'deposit' ? row.cost / row.price : row.cost,
+          CurBuy: row.type === 'buy' ? from : 'USD',
+          Sell: row.type === 'sell' ? row.cost / row.price: row.cost,
+          CurSell: row.type === 'sell' ? from : 'USD',
+          Exchange: 'Kraken',
+          'Trade Date': row.time,
+          // Use Kraken-provided price
+          // Not part of Cointracking data schema
+          Price: row.price
+        }
+      })
+      .filter(x => x)
   }
   else {
     error('Unrecognized file header:', headerColumns)
@@ -54,7 +78,7 @@ const isDir = inputPath => fs.lstatSync(inputPath).isDirectory()
 const isValidTradeFile = file => file !== '.DS_Store'
 
 // replace duplicate Cur. with CurBuy, CurSell, CurFee
-const fixHeader = input => {
+const fixCointrackingHeader = input => {
   const lines = input.split('\n')
   return [].concat(
     lines[0]
