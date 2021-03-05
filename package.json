@@ -11,6 +11,7 @@
     "cryptogains": "bin.js"
   },
   "dependencies": {
+    "chalk": "^4.1.0",
     "csvtojson": "^2.0.8",
     "got": "^9.6.0",
     "json2csv": "^4.3.3",

@@ -6,6 +6,7 @@ const path = require('path')
 const yargs = require('yargs')
 const Stock = require('./stock.js')
 const cryptogains = require('./index.js')
+const chalk = require('chalk')
 
 /** Extracts the currency symbols from a Kraken trading pair. */
 const pair = p => p === 'XETHZUSD' ? { from: 'ETH', to: 'USD' }
@@ -117,7 +118,13 @@ const isShortTerm = sale =>
 
 const numberWithCommas = n => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 
-const formatPrice = n => '$' + numberWithCommas(Math.round(n * 100)/100)
+const formatPrice = n => {
+  const priceString = '$' + numberWithCommas(Math.round(n * 100)/100)
+  return chalk[n > 0 ? 'green' :
+    n < 0 ? 'red' :
+    'cyan'
+    ](priceString)
+}
 
 // add two numbers
 const sum = (x,y) => x + y
