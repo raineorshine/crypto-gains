@@ -1,4 +1,5 @@
 const fs = require('fs')
+const path = require('path')
 const yargs = require('yargs')
 const csvtojson = require('csvtojson')
 const json2csv = require('json2csv')
@@ -8,6 +9,52 @@ const memoize = require('nano-persistent-memoizer')
 const mkdir = require('make-dir')
 const Stock = require('./stock.js')
 const stock = Stock()
+
+/** Loads a trade history file in Cointracking or Kraken format. */
+const loadTradeHistoryFile = file => {
+  const cointrackingColumns = ['Type','Buy','Cur.','Sell','Cur.','Exchange','Trade Group','Comment','Trade Date']
+  const krakenColumns = ['txid','ordertxid','pair','time','type','ordertype','price','cost','fee','vol','margin','misc','ledgers']
+  const text = fs.readFileSync(file, 'utf-8')
+  const headerColumns = text.split('\n')[0].split(',').map(col => col.replace(/["\r]/g, ''))
+
+  // CoinTracking
+  if (cointrackingColumns.every(col => headerColumns.includes(col))) {
+    return fixHeader(text)
+  }
+  // Kraken
+  else if (krakenColumns.every(col => headerColumns.includes(col))) {
+    error('Kraken file not yet supported')
+  }
+  else {
+    error('Unrecognized file header:', headerColumns)
+  }
+}
+
+/** Loads all trades from a file or directory. */
+const loadTrades = async inputPath => {
+  if (isDir(inputPath)) {
+    const tradeGroups = fs.readdirSync(inputPath)
+      .filter(isValidTradeFile)
+      .map(file => path.resolve(inputPath, file))
+      .filter(not(isDir))
+      .map(loadTradeHistoryFile)
+    error('tradeGroups')
+  }
+  else {
+    const input = loadTradeHistoryFile(inputPath)
+    const txs = Array.prototype.slice.call(await csvtojson().fromString(input), 0, argv.limit)
+    return txs
+  }
+}
+
+/** Returns a function that negates the return value of a given function. */
+const not = f => (...args) => !f(...args)
+
+/** Returns true if the given input path is a directory. */
+const isDir = inputPath => fs.lstatSync(inputPath).isDirectory()
+
+/** Returns true if the file is not one of the ignored file names. */
+const isValidTradeFile = file => file !== '.DS_Store'
 
 // replace duplicate Cur. with CurBuy, CurSell, CurFee
 const fixHeader = input => {
@@ -19,6 +66,12 @@ const fixHeader = input => {
       .replace('Cur.', 'CurFee'),
     lines.slice(1)
   ).join('\n')
+}
+
+/** Exits with an error code. */
+const error = msg => {
+  console.error(msg)
+  process.exit(1)
 }
 
 // convert trades array to CSV and restore header
@@ -452,14 +505,10 @@ const argv = yargs
   .option('verbose', { describe: 'Show more errors and warnings.' })
   .argv
 
-const file = argv._[0]
-
-
 ;(async () => {
 
-// import csv
-const input = fixHeader(fs.readFileSync(file, 'utf-8'))
-const txs = Array.prototype.slice.call(await csvtojson().fromString(input), 0, argv.limit) // convert to true array
+// load transactions from a csv or directory of csv files
+const txs = await loadTrades(argv._[0])
 
 const { matched, unmatched, income, cryptoToUsd, usdToCrypto, airdrops, usdDeposits, withdrawals, tradeTxs, margin, sales, interest, likeKindExchanges, noAvailablePurchases, noMatchingWithdrawals, priceErrors } = await calculate(txs)
 const salesWithGain = sales.map(sale => Object.assign({}, sale, { gain: sale.buy - sale.cost }))
