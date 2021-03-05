@@ -356,7 +356,7 @@ const cryptogains = async (txs, options = {}) => {
           else {
             const message = `WARNING: No matching withdrawal for deposit of ${tx.Buy} ${tx.CurBuy} on ${tx['Trade Date']}. Using historical price.`
             if (options.verbose) {
-              console.log(message)
+              console.warn(message)
             }
             noMatchingWithdrawals.push(message)
 

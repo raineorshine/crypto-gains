@@ -35,9 +35,9 @@ const loadTradeHistoryFile = async file => {
         if (!from && !to) return null
         return {
           Type: row.type === 'buy' || row.type === 'sell' ? 'Trade' : row.type === 'deposit' ? 'Deposit' : row.type,
-          Buy: row.type === ' buy' || row.type === 'deposit' ? row.cost / row.price : row.cost,
+          Buy: row.type === ' buy' || row.type === 'deposit' ? +row.cost / row.price : +row.cost,
           CurBuy: row.type === 'buy' ? from : 'USD',
-          Sell: row.type === 'sell' ? row.cost / row.price: row.cost,
+          Sell: row.type === 'sell' ? +row.cost / row.price : +row.cost,
           CurSell: row.type === 'sell' ? from : 'USD',
           Exchange: 'Kraken',
           'Trade Date': row.time,
@@ -163,14 +163,14 @@ const outputByYear = async (year, sales, interest, likeKindExchanges) => {
   // summary
   // cannot calculate unrealized gains from like-kind exchanges without fetching the price of tx.Buy and converting it to USD
   if (likeKindExchangesYear.length > 0) {
-    console.log(`${year} Like-Kind Exchange Deferred Gains (${likeKindExchangesYear.length})`, formatPrice(likeKindExchangesYear.map(sale => sale.deferredGains).reduce(sum, 0)))
+    console.info(`${year} Like-Kind Exchange Deferred Gains (${likeKindExchangesYear.length})`, formatPrice(likeKindExchangesYear.map(sale => sale.deferredGains).reduce(sum, 0)))
   }
-  console.log(`${year} Short-Term Sales (${stSalesYear.length}):`, formatPrice(stSalesYear.map(sale => sale.gain).reduce(sum, 0)))
-  console.log(`${year} Long-Term Sales (${ltSalesYear.length}):`, formatPrice(ltSalesYear.map(sale => sale.gain).reduce(sum, 0)))
+  console.info(`${year} Short-Term Sales (${stSalesYear.length}):`, formatPrice(stSalesYear.map(sale => sale.gain).reduce(sum, 0)))
+  console.info(`${year} Long-Term Sales (${ltSalesYear.length}):`, formatPrice(ltSalesYear.map(sale => sale.gain).reduce(sum, 0)))
   if (interestYear.length > 0) {
-    console.log(`${year} Interest (${interestYear.length}):`, formatPrice(interestYear.map(tx => tx.interestEarnedUSD).reduce(sum, 0)))
+    console.info(`${year} Interest (${interestYear.length}):`, formatPrice(interestYear.map(tx => tx.interestEarnedUSD).reduce(sum, 0)))
   }
-  console.log('')
+  console.info('')
 
   // output csv
   if (argv.output) {
@@ -228,29 +228,29 @@ const { matched, unmatched, income, cryptoToUsd, usdToCrypto, airdrops, usdDepos
 const salesWithGain = sales.map(sale => Object.assign({}, sale, { gain: sale.buy - sale.cost }))
 
 const total = withdrawals.length + matched.length + unmatched.length + cryptoToUsd.length + usdToCrypto.length + airdrops.length + usdDeposits.length + income.length + tradeTxs.length + margin.length + interest.length
-console.log('')
-console.log('Withdrawals:', withdrawals.length)
-console.log('Matched Deposits:', matched.length)
-console.log('Unmatched Deposits:', unmatched.length)
-console.log('Crypto-to-USD:', cryptoToUsd.length)
-console.log('USD-to-Crypto:', usdToCrypto.length)
-console.log('USD Deposits:', usdDeposits.length)
-console.log('Airdrops', airdrops.length)
-console.log('Income:', income.length)
-console.log('Trades:', tradeTxs.length)
-console.log('Margin Trades:', margin.length)
-console.log('Lending:', interest.length)
-console.log(total === txs.length
+console.info('')
+console.info('Withdrawals:', withdrawals.length)
+console.info('Matched Deposits:', matched.length)
+console.info('Unmatched Deposits:', unmatched.length)
+console.info('Crypto-to-USD:', cryptoToUsd.length)
+console.info('USD-to-Crypto:', usdToCrypto.length)
+console.info('USD Deposits:', usdDeposits.length)
+console.info('Airdrops', airdrops.length)
+console.info('Income:', income.length)
+console.info('Trades:', tradeTxs.length)
+console.info('Margin Trades:', margin.length)
+console.info('Lending:', interest.length)
+console.info(total === txs.length
   ? `TOTAL: ${total} ✓`
   : `✗ TOTAL: ${total}, TXS: ${txs.length}`
 )
-console.log('')
+console.info('')
 
-console.log('ERRORS')
-console.log('No available purchase:', noAvailablePurchases.length)
-console.log('No matching withdrawals:', noMatchingWithdrawals.length)
-console.log('Price errors:', priceErrors.length)
-console.log('')
+console.info('ERRORS')
+console.info('No available purchase:', noAvailablePurchases.length)
+console.info('No matching withdrawals:', noMatchingWithdrawals.length)
+console.info('Price errors:', priceErrors.length)
+console.info('')
 
 
 for (y = 2016; y <= (new Date).getFullYear(); y++) {
