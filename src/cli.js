@@ -54,12 +54,18 @@ const loadTradeHistoryFile = async file => {
 /** Loads all trades from a file or directory. */
 const loadTrades = async inputPath => {
   if (isDir(inputPath)) {
-    const tradeGroups = fs.readdirSync(inputPath)
-      .filter(isValidTradeFile)
-      .map(file => path.resolve(inputPath, file))
-      .filter(not(isDir))
+    console.info('\nInput files (these MUST be in chronological order)')
+    const tradeGroups = await Promise.all(fs.readdirSync(inputPath)
+      .map(file => {
+        const fullPath = path.resolve(inputPath, file)
+        if (isDir(fullPath) || ignoreTradeFile(file)) return null
+        console.info(`  ${file}`)
+        return fullPath
+      })
+      .filter(x => x)
       .map(loadTradeHistoryFile)
-    error('tradeGroups')
+    )
+    return tradeGroups.flat().slice(0, argv.limit)
   }
   else {
     const txs = await loadTradeHistoryFile(inputPath)
@@ -87,14 +93,11 @@ const krakenTradeToCointracking = trade => {
   }
 }
 
-/** Returns a function that negates the return value of a given function. */
-const not = f => (...args) => !f(...args)
-
 /** Returns true if the given input path is a directory. */
 const isDir = inputPath => fs.lstatSync(inputPath).isDirectory()
 
-/** Returns true if the file is not one of the ignored file names. */
-const isValidTradeFile = file => file !== '.DS_Store'
+/** Returns true if the file is one of the ignored file names. */
+const ignoreTradeFile = file => file === '.DS_Store'
 
 // replace duplicate Cur. with CurBuy, CurSell, CurFee
 const fixCointrackingHeader = input => {
@@ -109,8 +112,8 @@ const fixCointrackingHeader = input => {
 }
 
 /** Exits with an error code. */
-const error = msg => {
-  console.error(msg)
+const error = (...msg) => {
+  console.error(...msg)
   process.exit(1)
 }
 
