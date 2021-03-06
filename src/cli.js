@@ -29,23 +29,21 @@ const loadTradeHistoryFile = async file => {
   else if (krakenColumns.every(col => headerColumns.includes(col))) {
     return [...await csvtojson().fromString(text)]
       // convert Kraken schema to Cointracking
+      // add withdrawal
       .map(row => {
-        const { from, to } = pair(row.pair)
-        // ignore USDC -> USD trades
-        if (!from && !to) return null
-        return {
-          Type: row.type === 'buy' || row.type === 'sell' ? 'Trade' : row.type === 'deposit' ? 'Deposit' : row.type,
-          Buy: row.type === ' buy' || row.type === 'deposit' ? +row.cost / row.price : +row.cost,
-          CurBuy: row.type === 'buy' ? from : 'USD',
-          Sell: row.type === 'sell' ? +row.cost / row.price : +row.cost,
-          CurSell: row.type === 'sell' ? from : 'USD',
-          Exchange: 'Kraken',
-          'Trade Date': row.time,
-          // Use Kraken-provided price
-          // Not part of Cointracking data schema
-          Price: row.price
-        }
+        const trade = krakenTradeToCointracking(row)
+        return [
+          trade,
+          // assume that funds are immediately withdrawn after a sale so that they are removed from the stock
+          trade && row.type === 'sell' ? {
+            ...trade,
+            Type: 'Withdrawal',
+            Buy: null,
+            BuyCur: null,
+          } : null
+        ]
       })
+      .flat()
       .filter(x => x)
   }
   else {
@@ -66,6 +64,26 @@ const loadTrades = async inputPath => {
   else {
     const txs = await loadTradeHistoryFile(inputPath)
     return txs.slice(0, argv.limit)
+  }
+}
+
+/** Converts a trade in the Kraken schema to the Cointracking schema. */
+const krakenTradeToCointracking = trade => {
+  const { from, to } = pair(trade.pair)
+  // ignore USDC -> USD trades
+  if ((trade.type === 'buy' || trade.type === 'sell') && !from && !to) return null
+  return {
+    Type: trade.type === 'buy' || trade.type === 'sell' ? 'Trade'
+      : `${trade.type[0].toUpperCase()}${trade.type.slice(1).toLowerCase()}`,
+    Buy: trade.type === ' buy' || trade.type === 'deposit' ? +trade.cost / trade.price : +trade.cost,
+    CurBuy: trade.type === 'buy' || trade.type === 'deposit' ? from : 'USD',
+    Sell: trade.type === 'sell' ? +trade.cost / trade.price : +trade.cost,
+    CurSell: trade.type === 'sell' ? from : 'USD',
+    Exchange: 'Kraken',
+    'Trade Date': trade.time,
+    // Use Kraken-provided price
+    // Not part of Cointracking data schema
+    Price: +trade.price
   }
 }
 
