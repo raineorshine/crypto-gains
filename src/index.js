@@ -108,6 +108,16 @@ const cryptogains = async (txs, options = {}) => {
   const tradeTxs = []
   const airdrops = []
 
+
+  /* List of sales (not including like-kind-exchanges)
+  {
+    buy             // total sell amount in USD (it is called "buy" because we are "buying" USD)
+    buyCur          // Always USD
+    cost            // USD value of crypto that is sold
+    date            // date of the trade
+    dateAcquired    // date the original asset was acquired
+  }
+  */
   const sales = []
   const interest = [] // loan interest earned must be reported differently than sales
   const likeKindExchanges = []
@@ -240,12 +250,26 @@ const cryptogains = async (txs, options = {}) => {
         try {
           // Trade to USD
           if (tx.Type === 'Trade') {
-            sales.push(...stock.trade(+tx.Sell, tx.CurSell, +tx.Buy, 'USD', tx['Trade Date'], null, null, options.accounting))
+            sales.push(...stock.trade({
+              sell: +tx.Sell,
+              sellCur: tx.CurSell,
+              buy: +tx.Buy,
+              buyCur: 'USD',
+              date: tx['Trade Date'],
+              type: options.accounting
+            }))
           }
           // Shift: we have to calculate the historical USD sale value since Coinbase only provides the token price
           else {
             const p = tx.Price || await tryPrice(tx, tx.CurSell, 'USD', day(normalDate(tx['Trade Date'])), { ...options, exchange: tx.Exchange }) || 0
-            sales.push(...stock.trade(+tx.Sell, tx.CurSell, tx.Sell * p, 'USD', tx['Trade Date'], null, null, options.accounting))
+            sales.push(...stock.trade({
+              sell: +tx.Sell,
+              sellCur: tx.CurSell,
+              buy: tx.Sell * p,
+              buyCur: 'USD',
+              date: tx['Trade Date'],
+              type: options.accounting
+            }))
           }
         }
         catch (e) {
@@ -277,15 +301,25 @@ const cryptogains = async (txs, options = {}) => {
       else if(tx.Type === 'Trade') {
         tradeTxs.push(tx)
 
-        // update cost basis
+        // fetch price of buy currency
         const p = tx.Price || await tryPrice(tx, tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])), options)
 
+        // update cost basis
         try {
           const before2018 = options.likekind && (new Date(normalDate(tx['Trade Date']))).getFullYear() < 2018
-          const tradeExchanges = stock.trade(+tx.Sell, tx.CurSell, +tx.Buy, tx.CurBuy, tx['Trade Date'], p, !before2018, options.accounting)
+          const trades = stock.trade({
+            sell: +tx.Sell,
+            sellCur: tx.CurSell,
+            buy: +tx.Buy,
+            buyCur: tx.CurBuy,
+            date: tx['Trade Date'],
+            newCostBasis: p,
+            isSale: !before2018,
+            type: options.accounting
+          })
 
           ;(before2018 ? likeKindExchanges : sales)
-            .push(...tradeExchanges)
+            .push(...trades)
         }
         catch (e) {
           if (e instanceof Stock.NoAvailablePurchaseError) {
@@ -358,11 +392,12 @@ const cryptogains = async (txs, options = {}) => {
             }
             noMatchingWithdrawals.push(message)
 
-            const newTx = Object.assign({}, tx, {
+            const newTx = {
+              ...tx,
               Type: 'Income',
               Comment: 'Cost Basis',
-              Price: p
-            })
+              Price: p,
+            }
 
             unmatched.push(newTx)
           }

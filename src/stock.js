@@ -54,64 +54,84 @@ const Stock = () => {
   // newCostBasis is used to calculate the deferred gains
   // if isSale, new cost basis sets the cost basis of the new currency (i.e. treats it as a taxable sale)
   // otherwise the cost basis is preserved
-  const trade = (sell, sellCur, buy, buyCur, date, newCostBasis, isSale, type = 'fifo') => {
+  const trade = ({ sell, sellCur, buy, buyCur, date, newCostBasis, isSale, type }) => {
+    type = type || 'fifo'
     let pending = sell
-    const exchanges = []
+    const trades = []
     while (pending > 0) {
 
-      let lot, lotDebit, cost
+      // next lot with the sell currency
+      let lot
 
-      // do not track USD in stock since it is the basis
+      // amount of sell currency to debit from lot
+      let sellPartial
+
+      // cost in USD of the currency sold
+      // i.e. proportional cost of the amount that is taken from the lot
+      let costPartial
+
+      // USD sale: do not track USD in stock since it is the basis
       if (sellCur === 'USD') {
-          lotDebit = sell
-          cost = sell
+          sellPartial = sell
+          costPartial = sell
           pending = 0
       }
-      // non-USD
+      // Non-USD sale: actual trade
       else {
+        // get the next lot with the sell currency
+        // it will be either completely partially consumed in the trade (mutation)
         lot = next(sellCur, type)
         if (!lot) throw new NoAvailablePurchaseError(`trade: No available purchase for ${sell} ${sellCur} trade on ${date} (${sell - pending} ${sellCur} found)`)
 
         // lot has a larger supply than is needed
         if (lot.amount > pending || closeEnough(lot.amount, pending)) {
-          lotDebit = pending
-          cost = lot.cost * (pending / lot.amount)
-          lot.amount -= pending
-          lot.cost -= cost
+          sellPartial = pending
+          costPartial = lot.cost * (sellPartial / lot.amount) // proportional cost of the amount that is taken from the lot
+          lot.amount -= pending   // debit sell amount from lot
+          lot.cost -= costPartial // debit partial cost from lot
           pending = 0
         }
-        // lot is not big enough
+        // lot is not big enough, take what we can
         else {
           remove(lot)
-          lotDebit = lot.amount
-          cost = lot.cost
+          sellPartial = lot.amount
+          costPartial = lot.cost
           pending -= lot.amount
         }
       }
 
-      const buyNew = buy * (lotDebit / sell)
+      // proportional amount of the buy amount
+      // if the lot is big enough to make the entire sale, then it equals the full buy amount
+      //   i.e. if sellPartial === sell, then buyPartial === buy
+      // otherwise, it only equals a portion of the full buy amount
+      //   e.g. if we can only debit 50% of the sell amount, then we can only buy 50% of the buy amount
+      const buyPartial = buy * (sellPartial / sell)
 
-      lots.push({
-        amount: buyNew,
+      // add a new lot of the purchased currency
+      const lotNew = {
+        amount: buyPartial,
         cur: buyCur,
-        cost: isSale ? newCostBasis : cost, // give the new currency a new cost basis if provided
-        deferredGains: (newCostBasis || cost) - cost,
+        cost: isSale ? newCostBasis : costPartial, // give the new currency a new cost basis if provided
+        deferredGains: (newCostBasis || costPartial) - costPartial,
         date: isSale || !lot ? date : lot.date
-      })
+      }
+      lots.push(lotNew)
 
-      exchanges.push({
-        buy: buyNew,
+      // record the trade
+      const tradeNew = {
+        buy: buyPartial,
         buyCur,
-        sell: lotDebit,
+        sell: sellPartial,
         sellCur,
-        cost,
-        deferredGains: (newCostBasis || cost) - cost - (lot.deferredGains || 0),
-        date, // include this even though it is an argument in order to make concatenated exchanges easier
+        cost: costPartial,
+        deferredGains: (newCostBasis || costPartial) - costPartial - (lot.deferredGains || 0),
+        date, // include this even though it is an argument in order to make concatenated trades easier
         dateAcquired: lot ? lot.date : date
-      })
+      }
+      trades.push(tradeNew)
     }
 
-    return exchanges
+    return trades
   }
 
   return { balance, deposit, withdraw, trade }

@@ -246,7 +246,10 @@ const outputByYear = async (year, sales, interest, likeKindExchanges) => {
 const txs = await loadTrades(argv._[0])
 
 const { matched, unmatched, income, cryptoToUsd, usdToCrypto, airdrops, usdDeposits, withdrawals, tradeTxs, margin, sales, interest, likeKindExchanges, noAvailablePurchases, noMatchingWithdrawals, priceErrors } = await cryptogains(txs, argv)
-const salesWithGain = sales.map(sale => Object.assign({}, sale, { gain: sale.buy - sale.cost }))
+
+// sale.buy is the USD acquired from the trade ("buy" USD)
+// sale.cost is the cost basis
+const salesWithGain = sales.map(sale => ({ ...sale, gain: sale.buy - sale.cost }))
 
 const total = withdrawals.length + matched.length + unmatched.length + cryptoToUsd.length + usdToCrypto.length + airdrops.length + usdDeposits.length + income.length + tradeTxs.length + margin.length + interest.length
 console.info('')
