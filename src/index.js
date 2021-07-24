@@ -283,8 +283,6 @@ const cryptogains = async (txs, options = {}) => {
         try {
           const before2018 = options.likekind && (new Date(normalDate(tx['Trade Date']))).getFullYear() < 2018
           const tradeExchanges = stock.trade(+tx.Sell, tx.CurSell, +tx.Buy, tx.CurBuy, tx['Trade Date'], p, !before2018, options.accounting)
-            // insert cost of new asset for accounting purposes
-            .map(sale => Object.assign({}, sale, { newCost: sale.buy * p }))
 
           ;(before2018 ? likeKindExchanges : sales)
             .push(...tradeExchanges)
