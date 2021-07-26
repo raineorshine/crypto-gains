@@ -52,9 +52,9 @@ const Stock = () => {
   }
 
   // newCostBasis is used to calculate the deferred gains
-  // if isSale, new cost basis sets the cost basis of the new currency (i.e. treats it as a taxable sale)
+  // if !isLikekind, new cost basis sets the cost basis of the new currency (i.e. treats it as a taxable sale)
   // otherwise the cost basis is preserved
-  const trade = ({ sell, sellCur, buy, buyCur, date, newCostBasis, isSale, type }) => {
+  const trade = ({ sell, sellCur, buy, buyCur, date, newCostBasis, isLikekind, type }) => {
     type = type || 'fifo'
     let pending = sell
     const trades = []
@@ -111,9 +111,9 @@ const Stock = () => {
       const lotNew = {
         amount: buyPartial,
         cur: buyCur,
-        cost: isSale ? newCostBasis : costPartial, // give the new currency a new cost basis if provided
+        cost: isLikekind ? costPartial : newCostBasis, // give the new lot the old cost basis if like-kind exchange
         deferredGains: (newCostBasis || costPartial) - costPartial,
-        date: isSale || !lot ? date : lot.date
+        date: lot && isLikekind ? lot.date : date
       }
       lots.push(lotNew)
 

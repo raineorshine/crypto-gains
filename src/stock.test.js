@@ -78,7 +78,7 @@ describe('stock', () => {
       assert.equal(stock.balance('ETH'), 10)
     })
 
-    it('preserve dateAcquired', () => {
+    it('preserve dateAcquired in like-kind exchange', () => {
       const stock = Stock()
       const dateAcquired = new Date('2019')
       const now = new Date()
@@ -88,7 +88,8 @@ describe('stock', () => {
         sellCur: 'BTC',
         buy: 10,
         buyCur: 'ETH',
-        date: now
+        date: now,
+        isLikekind: true,
       })
       assert.deepEqual(trades1, [
         {
@@ -140,7 +141,6 @@ describe('stock', () => {
         buyCur: 'ETH',
         date: now,
         newCostBasis: 5000,
-        isSale: true
       })
 
       assert.deepEqual(trades1, [
@@ -417,7 +417,7 @@ describe('stock', () => {
         buyCur: 'ETH',
         date: now,
         newCostBasis: 5000,
-        isSale: false,
+        isLikekind: true,
       })
 
       assert.deepEqual(trades1, [
@@ -445,7 +445,7 @@ describe('stock', () => {
         buyCur: 'LTC',
         date: now,
         newCostBasis: 10000,
-        isSale: false
+        isLikekind: true
       })
 
       assert.deepEqual(trades2, [
@@ -473,7 +473,7 @@ describe('stock', () => {
         buyCur: 'BTC',
         date: now,
         newCostBasis: 10000,
-        isSale: false
+        isLikekind: true
       })
 
       assert.deepEqual(exchanges3, [
@@ -503,7 +503,7 @@ describe('stock', () => {
       //   buyCur: 'ETH',
       //   date: now,
       //   newCostBasis: 8000,
-      //   isSale: false
+      //   isLikekind: true
       // })
 
       // assert.deepEqual(exchanges4, [
@@ -536,7 +536,7 @@ describe('stock', () => {
         buyCur: 'ETH',
         date: now,
         newCostBasis: 5000,
-        isSale: false
+        isLikekind: true
       })
 
       assert.deepEqual(trades1, [
@@ -564,7 +564,7 @@ describe('stock', () => {
         buyCur: 'LTC',
         date: now,
         newCostBasis: 10000,
-        isSale: false
+        isLikekind: true
       })
 
       assert.deepEqual(trades2, [
@@ -592,7 +592,7 @@ describe('stock', () => {
         buyCur: 'BTC',
         date: now,
         newCostBasis: 8000,
-        isSale: false
+        isLikekind: true
       })
 
       assert.deepEqual(exchanges3, [

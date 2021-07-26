@@ -306,19 +306,19 @@ const cryptogains = async (txs, options = {}) => {
 
         // update cost basis
         try {
-          const before2018 = options.likekind && (new Date(normalDate(tx['Trade Date']))).getFullYear() < 2018
+          const isLikekind = options.likekind && (new Date(normalDate(tx['Trade Date']))).getFullYear() < 2018
           const trades = stock.trade({
+            isLikekind,
             sell: +tx.Sell,
             sellCur: tx.CurSell,
             buy: +tx.Buy,
             buyCur: tx.CurBuy,
             date: tx['Trade Date'],
             newCostBasis: p,
-            isSale: !before2018,
             type: options.accounting
           })
 
-          ;(before2018 ? likeKindExchanges : sales)
+          ;(isLikekind ? likeKindExchanges : sales)
             .push(...trades)
         }
         catch (e) {
