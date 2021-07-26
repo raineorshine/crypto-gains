@@ -314,7 +314,7 @@ const cryptogains = async (txs, options = {}) => {
             buy: +tx.Buy,
             buyCur: tx.CurBuy,
             date: tx['Trade Date'],
-            newCostBasis: p,
+            price: p,
             type: options.accounting
           })
 

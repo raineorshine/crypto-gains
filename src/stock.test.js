@@ -140,7 +140,7 @@ describe('stock', () => {
         buy: 10,
         buyCur: 'ETH',
         date: now,
-        newCostBasis: 5000,
+        price: 5000,
       })
 
       assert.deepEqual(trades1, [
@@ -416,7 +416,7 @@ describe('stock', () => {
         buy: 10,
         buyCur: 'ETH',
         date: now,
-        newCostBasis: 5000,
+        price: 5000,
         isLikekind: true,
       })
 
@@ -444,7 +444,7 @@ describe('stock', () => {
         buy: 5,
         buyCur: 'LTC',
         date: now,
-        newCostBasis: 10000,
+        price: 10000,
         isLikekind: true
       })
 
@@ -472,7 +472,7 @@ describe('stock', () => {
         buy: 2,
         buyCur: 'BTC',
         date: now,
-        newCostBasis: 10000,
+        price: 10000,
         isLikekind: true
       })
 
@@ -502,7 +502,7 @@ describe('stock', () => {
       //   buy: 10,
       //   buyCur: 'ETH',
       //   date: now,
-      //   newCostBasis: 8000,
+      //   price: 8000,
       //   isLikekind: true
       // })
 
@@ -535,7 +535,7 @@ describe('stock', () => {
         buy: 10,
         buyCur: 'ETH',
         date: now,
-        newCostBasis: 5000,
+        price: 5000,
         isLikekind: true
       })
 
@@ -563,7 +563,7 @@ describe('stock', () => {
         buy: 5,
         buyCur: 'LTC',
         date: now,
-        newCostBasis: 10000,
+        price: 10000,
         isLikekind: true
       })
 
@@ -591,7 +591,7 @@ describe('stock', () => {
         buy: 2,
         buyCur: 'BTC',
         date: now,
-        newCostBasis: 8000,
+        price: 8000,
         isLikekind: true
       })
 

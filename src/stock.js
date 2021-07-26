@@ -51,10 +51,11 @@ const Stock = () => {
     return exchangeLots
   }
 
-  // newCostBasis is used to calculate the deferred gains
-  // if !isLikekind, new cost basis sets the cost basis of the new currency (i.e. treats it as a taxable sale)
-  // otherwise the cost basis is preserved
-  const trade = ({ sell, sellCur, buy, buyCur, date, newCostBasis, isLikekind, type }) => {
+  /** Perform a trade by debiting the sell asset and crediting the buy asset. Debits from multiple lots with different cost bases.
+   *
+   * @param price Updates the cost basis of the new lot. Gains are calculated from the original cost basis in the return value. If isLikekind, the cost basis is preserved.
+   */
+  const trade = ({ sell, sellCur, buy, buyCur, date, price, isLikekind, type }) => {
     type = type || 'fifo'
     let pending = sell
     const trades = []
@@ -111,8 +112,8 @@ const Stock = () => {
       const lotNew = {
         amount: buyPartial,
         cur: buyCur,
-        cost: isLikekind ? costPartial : newCostBasis, // give the new lot the old cost basis if like-kind exchange
-        deferredGains: (newCostBasis || costPartial) - costPartial,
+        cost: isLikekind ? costPartial : price, // give the new lot the old cost basis if like-kind exchange
+        deferredGains: (price || costPartial) - costPartial,
         date: lot && isLikekind ? lot.date : date
       }
       lots.push(lotNew)
@@ -124,7 +125,7 @@ const Stock = () => {
         sell: sellPartial,
         sellCur,
         cost: costPartial,
-        deferredGains: (newCostBasis || costPartial) - costPartial - (lot.deferredGains || 0),
+        deferredGains: (price || costPartial) - costPartial - (lot.deferredGains || 0),
         date, // include this even though it is an argument in order to make concatenated trades easier
         dateAcquired: lot ? lot.date : date
       }
