@@ -108,12 +108,15 @@ const Stock = () => {
       //   e.g. if we can only debit 50% of the sell amount, then we can only buy 50% of the buy amount
       const buyPartial = buy * (sellPartial / sell)
 
+      // set the cost basis of the new lot to the proportional cost at the new buy price
+      const costPartialNew = buyPartial * price
+
       // add a new lot of the purchased currency
       const lotNew = {
         amount: buyPartial,
         cur: buyCur,
-        cost: isLikekind ? costPartial : price, // give the new lot the old cost basis if like-kind exchange
-        deferredGains: (price || costPartial) - costPartial,
+        cost: isLikekind ? costPartial : costPartialNew, // give the new lot the old cost basis if like-kind exchange
+        deferredGains: isLikekind ? costPartialNew - costPartial : 0,
         date: lot && isLikekind ? lot.date : date
       }
       lots.push(lotNew)
@@ -125,7 +128,7 @@ const Stock = () => {
         sell: sellPartial,
         sellCur,
         cost: costPartial,
-        deferredGains: (price || costPartial) - costPartial - (lot.deferredGains || 0),
+        deferredGains: costPartialNew - costPartial - (lot.deferredGains || 0),
         date, // include this even though it is an argument in order to make concatenated trades easier
         dateAcquired: lot ? lot.date : date
       }
