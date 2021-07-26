@@ -124,6 +124,7 @@ const cryptogains = async (txs, options = {}) => {
   const noAvailablePurchases = []
   const noMatchingWithdrawals = []
   const priceErrors = []
+  const zeroPrices = []
 
   const txsByDay = groupByDay(txs)
 
@@ -304,6 +305,12 @@ const cryptogains = async (txs, options = {}) => {
         // fetch price of buy currency
         const p = tx.Price || await tryPrice(tx, tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])), options)
 
+        // A zero price could cause problems
+        // Luckily it seems quite rare
+        if (!p) {
+          zeroPrices.push(tx)
+        }
+
         // update cost basis
         try {
           const isLikekind = options.likekind && (new Date(normalDate(tx['Trade Date']))).getFullYear() < 2018
@@ -421,7 +428,7 @@ const cryptogains = async (txs, options = {}) => {
     }
   }
 
-  return { matched, unmatched, income, cryptoToUsd, usdToCrypto, airdrops, usdDeposits, withdrawals, tradeTxs, margin, sales, interest, likeKindExchanges, noAvailablePurchases, noMatchingWithdrawals, priceErrors }
+  return { matched, unmatched, income, cryptoToUsd, usdToCrypto, airdrops, usdDeposits, withdrawals, tradeTxs, margin, sales, interest, likeKindExchanges, noAvailablePurchases, noMatchingWithdrawals, priceErrors, zeroPrices }
 }
 
 module.exports = cryptogains

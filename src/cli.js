@@ -245,7 +245,7 @@ const outputByYear = async (year, sales, interest, likeKindExchanges) => {
 // load transactions from a csv or directory of csv files
 const txs = await loadTrades(argv._[0])
 
-const { matched, unmatched, income, cryptoToUsd, usdToCrypto, airdrops, usdDeposits, withdrawals, tradeTxs, margin, sales, interest, likeKindExchanges, noAvailablePurchases, noMatchingWithdrawals, priceErrors } = await cryptogains(txs, argv)
+const { matched, unmatched, income, cryptoToUsd, usdToCrypto, airdrops, usdDeposits, withdrawals, tradeTxs, margin, sales, interest, likeKindExchanges, noAvailablePurchases, noMatchingWithdrawals, priceErrors, zeroPrices } = await cryptogains(txs, argv)
 
 // sale.buy is the USD acquired from the trade ("buy" USD)
 // sale.cost is the cost basis
@@ -274,6 +274,7 @@ console.info('ERRORS')
 console.info('No available purchase:', noAvailablePurchases.length)
 console.info('No matching withdrawals:', noMatchingWithdrawals.length)
 console.info('Price errors:', priceErrors.length)
+console.info('Zero prices:', zeroPrices.length)
 console.info('')
 
 
