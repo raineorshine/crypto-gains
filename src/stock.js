@@ -115,7 +115,10 @@ const Stock = () => {
       const lotNew = {
         amount: buyPartial,
         cur: buyCur,
-        cost: isLikekind ? costPartial : costPartialNew, // give the new lot the old cost basis if like-kind exchange
+        // give the new lot the old cost basis if like-kind exchange
+        cost: isLikekind ? costPartial : costPartialNew,
+        // transfer the deferred gains from the old lot to the new lot
+        // we don't need to add old lot's deferred gains since costPartial still represents the original cost basis of the like-kind exchange
         deferredGains: isLikekind ? costPartialNew - costPartial : 0,
         date: lot && isLikekind ? lot.date : date
       }
@@ -128,7 +131,7 @@ const Stock = () => {
         sell: sellPartial,
         sellCur,
         cost: costPartial,
-        deferredGains: costPartialNew - costPartial - (lot.deferredGains || 0),
+        deferredGains: lotNew.deferredGains,
         date, // include this even though it is an argument in order to make concatenated trades easier
         dateAcquired: lot ? lot.date : date
       }
