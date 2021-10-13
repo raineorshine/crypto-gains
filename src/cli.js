@@ -155,7 +155,7 @@ const sum = (x,y) => x + y
 *****************************************************************/
 
 const argv = yargs
-  .usage('Usage: $0 <data.csv> [options]')
+  .usage('Usage: $0 <file or directory> [options]')
   .demandCommand(1)
   .option('accounting', { default: 'fifo', describe: 'Accounting type: fifo/lifo.' })
   .option('exchange', { default: 'cccagg', describe: 'Exchange for price lookups.' })

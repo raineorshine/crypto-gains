@@ -3,9 +3,18 @@ Historical prices provided by the [cryptocompare API](https://min-api.cryptocomp
 ## Usage
 
 ```sh
-Usage: index.js <data.csv> [options]
+./bin.js --accounting lifo --output ./out <csv file or directory> [options]
+```
 
-Options:
+- Reads a csv file of transactions, or a directory of such csv files
+  - Use data format from [cointracking.info/trades](https://cointracking.info/trades.php)
+  - Must be sorted by trade date ascending
+  - See [sample-data.csv](https://github.com/raineorshine/cost-basis-filler/blob/master/sample-data.csv) 
+
+
+## Options
+
+```sh
   --accounting  Accounting type: fifo/lifo.                [lifo|fifo (default)]
   --exchange    Exchange for price lookups.                  [default: "cccagg"]
   --help        Show help                                              [boolean]
@@ -24,20 +33,16 @@ Options:
 
 ## Data Format
 
-- Use data format from [cointracking.info/trades](https://cointracking.info/trades.php)
-- Must be sorted by trade date ascending
-- See [sample-data.csv](https://github.com/raineorshine/cost-basis-filler/blob/master/sample-data.csv) 
-
 Columns:
 
 ```
 ,Type,Buy,Cur.,Sell,Cur.,Exchange,Trade Group,Comment,Trade Date
 ```
 
-## Usage
+## Example
 
 ```sh
-$ ./bin.js --accounting lifo trades.csv 
+$ ./bin.js --accounting lifo --output ./out ./trades
 
 Withdrawals: 449
 Matched Deposits: 755
