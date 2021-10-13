@@ -131,7 +131,9 @@ const Stock = () => {
         sell: sellPartial,
         sellCur,
         cost: costPartial,
-        deferredGains: lotNew.deferredGains,
+        // subtract the deferred gains from the previous lot since it has already been recorded
+        // thus a sum of deferred gains can be made without including any gains more than once
+        deferredGains: lotNew.deferredGains - (lot?.deferredGains || 0),
         date, // include this even though it is an argument in order to make concatenated trades easier
         dateAcquired: lot ? lot.date : date
       }
