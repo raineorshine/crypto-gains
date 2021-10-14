@@ -6,11 +6,17 @@ Historical prices provided by the [cryptocompare API](https://min-api.cryptocomp
 ./bin.js --accounting lifo --output ./out <csv file or directory> [options]
 ```
 
-- Reads a csv file of transactions, or a directory of such csv files
-  - Use data format from [cointracking.info/trades](https://cointracking.info/trades.php)
-  - Must be sorted by trade date ascending
-  - See [sample-data.csv](https://github.com/raineorshine/cost-basis-filler/blob/master/sample-data.csv) 
+- Reads a csv file of transactions (or a directory of csv files)
+  - Use the data format from [cointracking.info/trades](https://cointracking.info/trades.php).
+  - Must be sorted by trade date ascending.
+  - See [sample-data.csv](https://github.com/raineorshine/cost-basis-filler/blob/master/sample-data.csv).
+- Outputs csv with gains for each year
+  - `,Type,Buy,Cur.,Sell,Cur.,Exchange,Trade Group,Comment,Trade Date`
 
+## Installation
+
+1. Clone the repo.
+2. Rename sample-secure.json to secure.json and add valid API keys, icos (optional), and airdrop tokens to ignore (optional)
 
 ## Options
 
@@ -24,19 +30,6 @@ Historical prices provided by the [cryptocompare API](https://min-api.cryptocomp
   --output      Output directory for results.          [stdout if not specified]
   --verbose     Show more errors and warnings.
   --version     Show version number                                    [boolean]
-```
-
-## Installation
-
-1. Clone the repo.
-2. Rename sample-secure.json to secure.json and add valid API keys, icos (optional), and airdrop tokens to ignore (optional)
-
-## Data Format
-
-Columns:
-
-```
-,Type,Buy,Cur.,Sell,Cur.,Exchange,Trade Group,Comment,Trade Date
 ```
 
 ## Example
