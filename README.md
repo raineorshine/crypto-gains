@@ -1,3 +1,5 @@
+Calculates capital gains from cryptocurrency trades.
+
 Historical prices provided by the [cryptocompare API](https://min-api.cryptocompare.com/documentation?key=Historical&cat=dataPriceHistorical).
 
 ## Usage
@@ -7,9 +9,9 @@ Historical prices provided by the [cryptocompare API](https://min-api.cryptocomp
 ```
 
 - Reads a csv file of transactions (or a directory of csv files)
-  - Use the data format from [cointracking.info/trades](https://cointracking.info/trades.php).
-  - Must be sorted by trade date ascending.
-  - See [sample-data.csv](https://github.com/raineorshine/cost-basis-filler/blob/master/sample-data.csv).
+  - Supports the trade history export format from [CoinTracking](https://cointracking.info/trades.php) or [Kraken](https://www.kraken.com/u/history/export).
+  - Transactions must be sorted by trade date ascending.
+  - See [sample-data.csv](https://github.com/raineorshine/cost-basis-filler/blob/master/sample-data.csv) for a sample CoinTracking trade history file.
 - Outputs csv with gains for each year
   - `,Type,Buy,Cur.,Sell,Cur.,Exchange,Trade Group,Comment,Trade Date`
 
