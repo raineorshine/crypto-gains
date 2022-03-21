@@ -1,3 +1,9 @@
+// known currencies that have missing prices
+const currenciesWithMissingPrices = {
+  APPC: 1,
+  SNT: 1,
+}
+
 const closeEnough = (a, b) => Math.abs(a - b) <= 0.02
 
 const Stock = () => {
@@ -71,7 +77,7 @@ const Stock = () => {
       // i.e. proportional cost of the amount that is taken from the lot
       let costPartial
 
-      // USD sale: do not track USD in stock since it is the basis
+      // USD sale (i.e. crypto purchase): do not track USD in stock since it is the basis
       if (sellCur === 'USD') {
           sellPartial = sell
           costPartial = sell
@@ -79,6 +85,12 @@ const Stock = () => {
       }
       // Non-USD sale: actual trade
       else {
+
+        // if a taxable sale (i.e. trading to USD), we can calculate the price directly from the trade
+        if (buyCur === 'USD') {
+          price = buy / sell
+        }
+
         // get the next lot with the sell currency
         // it will be either completely partially consumed in the trade (mutation)
         lot = next(sellCur, type)
@@ -99,6 +111,13 @@ const Stock = () => {
           costPartial = lot.cost
           pending -= lot.amount
         }
+      }
+
+      // if the price is missing, we're purchasing a non-zero amount, and it is not a currency that is known to have missing prices, then throw an error
+      if (!price && buy && !currenciesWithMissingPrices[buyCur]) {
+        console.error('args', { sell, sellCur, buy, buyCur, date, price, isLikekind, type })
+        console.error('lot', lot)
+        throw new Error('Missing Price')
       }
 
       // proportional amount of the buy amount
@@ -122,7 +141,12 @@ const Stock = () => {
         deferredGains: isLikekind ? costPartialNew - costPartial : 0,
         date: lot && isLikekind ? lot.date : date
       }
-      lots.push(lotNew)
+
+      // do not store new lot for crypto sale to USD
+      // it would get ignored anyway
+      if (buyCur !== 'USD') {
+        lots.push(lotNew)
+      }
 
       // record the trade
       const tradeNew = {
