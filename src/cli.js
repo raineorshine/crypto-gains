@@ -9,9 +9,14 @@ const cryptogains = require('./index.js')
 const chalk = require('chalk')
 
 /** Extracts the currency symbols from a Kraken trading pair. */
-const pair = p => p === 'XETHZUSD' ? { from: 'ETH', to: 'USD' }
+const pair = p => p === 'BATUSD' ? { from : 'BAT', to: 'USD' }
   : p === 'XXBTZUSD' ? { from : 'BTC', to: 'USD' }
+  : p === 'XBTUSDC' ? { from : 'BTC', to: 'USD' }
+  : p === 'DAIUSD' ? { from : 'DAI', to: 'USD' }
+  : p === 'XETHZUSD' ? { from: 'ETH', to: 'USD' }
+  : p === 'GNOUSD' ? { from : 'GNO', to: 'USD' }
   : p === 'USDCUSD' ? {}
+  : p === 'USDTZUSD' ? {}
   : error(`Unrecognized trading pair: ${p}`)
 
 /** Loads a trade history file in Cointracking or Kraken format. */
