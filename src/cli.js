@@ -8,21 +8,24 @@ const Stock = require('./stock.js')
 const cryptogains = require('./index.js')
 const chalk = require('chalk')
 
+const pairMap = new Map([
+  ['BATUSD', { from : 'BAT', to: 'USD' }],
+  ['AVAXUSD', { from : 'AVAX', to: 'USD' }],
+  ['DAIUSD', { from : 'DAI', to: 'USD' }],
+  ['EOSUSD', { from : 'EOS', to: 'USD' }],
+  ['GNOUSD', { from : 'GNO', to: 'USD' }],
+  ['SOLUSD', { from : 'SOL', to: 'USD' }],
+  ['UNIUSD', { from : 'UNI', to: 'USD' }],
+  ['USDCUSD', {}],
+  ['USDTZUSD', {}],
+  ['XBTUSDC', { from : 'BTC', to: 'USD' }],
+  ['XETHZUSD', { from: 'ETH', to: 'USD' }],
+  ['XXBTZUSD', { from : 'BTC', to: 'USD' }],
+  ['XXLMZUSD', { from : 'XLM', to: 'USD' }],
+])
+
 /** Extracts the currency symbols from a Kraken trading pair. */
-const pair = p => p === 'BATUSD' ? { from : 'BAT', to: 'USD' }
-  : p === 'AVAXUSD' ? { from : 'AVAX', to: 'USD' }
-  : p === 'DAIUSD' ? { from : 'DAI', to: 'USD' }
-  : p === 'EOSUSD' ? { from : 'EOS', to: 'USD' }
-  : p === 'GNOUSD' ? { from : 'GNO', to: 'USD' }
-  : p === 'SOLUSD' ? { from : 'SOL', to: 'USD' }
-  : p === 'UNIUSD' ? { from : 'UNI', to: 'USD' }
-  : p === 'USDCUSD' ? {}
-  : p === 'USDTZUSD' ? {}
-  : p === 'XBTUSDC' ? { from : 'BTC', to: 'USD' }
-  : p === 'XETHZUSD' ? { from: 'ETH', to: 'USD' }
-  : p === 'XXBTZUSD' ? { from : 'BTC', to: 'USD' }
-  : p === 'XXLMZUSD' ? { from : 'XLM', to: 'USD' }
-  : error(`Unrecognized trading pair: ${p}`)
+const pair = p => pairMap.get(p) || error(`Unrecognized trading pair: ${p}`)
 
 /** Loads a trade history file in Cointracking or Kraken format. */
 const loadTradeHistoryFile = async file => {
