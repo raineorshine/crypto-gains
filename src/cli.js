@@ -10,13 +10,18 @@ const chalk = require('chalk')
 
 /** Extracts the currency symbols from a Kraken trading pair. */
 const pair = p => p === 'BATUSD' ? { from : 'BAT', to: 'USD' }
-  : p === 'XXBTZUSD' ? { from : 'BTC', to: 'USD' }
-  : p === 'XBTUSDC' ? { from : 'BTC', to: 'USD' }
+  : p === 'AVAXUSD' ? { from : 'AVAX', to: 'USD' }
   : p === 'DAIUSD' ? { from : 'DAI', to: 'USD' }
-  : p === 'XETHZUSD' ? { from: 'ETH', to: 'USD' }
+  : p === 'EOSUSD' ? { from : 'EOS', to: 'USD' }
   : p === 'GNOUSD' ? { from : 'GNO', to: 'USD' }
+  : p === 'SOLUSD' ? { from : 'SOL', to: 'USD' }
+  : p === 'UNIUSD' ? { from : 'UNI', to: 'USD' }
   : p === 'USDCUSD' ? {}
   : p === 'USDTZUSD' ? {}
+  : p === 'XBTUSDC' ? { from : 'BTC', to: 'USD' }
+  : p === 'XETHZUSD' ? { from: 'ETH', to: 'USD' }
+  : p === 'XXBTZUSD' ? { from : 'BTC', to: 'USD' }
+  : p === 'XXLMZUSD' ? { from : 'XLM', to: 'USD' }
   : error(`Unrecognized trading pair: ${p}`)
 
 /** Loads a trade history file in Cointracking or Kraken format. */
