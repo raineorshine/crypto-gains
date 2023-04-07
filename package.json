@@ -1,7 +1,7 @@
 {
   "name": "crypto-gains",
   "description": "Calculate crypto gains using like-kind exchanges before January 1, 2018.",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "author": {
     "name": "Raine Revere",
     "url": "https://github.com/raineorshine"
