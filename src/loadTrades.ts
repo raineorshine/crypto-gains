@@ -8,6 +8,65 @@ import Ticker from './@types/Ticker.js'
 import Trade from './@types/Trade.js'
 import nonNull from './nonNull.js'
 
+// Corresponding type: CoinTrackingTrade
+const cointrackingColumns = ['Type', 'Buy', 'Cur.', 'Sell', 'Cur.', 'Exchange', 'Trade Group', 'Comment', 'Trade Date']
+
+// Corresponding type: GeminiTrade
+const geminiColumns = [
+  'Date',
+  'Time (UTC)',
+  'Type',
+  'Symbol',
+  'Specification',
+  'Liquidity Indicator',
+  'Trading Fee Rate (bps)',
+  'USD Amount USD',
+  'Fee (USD) USD',
+  'USD Balance USD',
+  'BTC Amount BTC',
+  'Fee (BTC) BTC',
+  'BTC Balance BTC',
+  'ETH Amount ETH',
+  'Fee (ETH) ETH',
+  'ETH Balance ETH',
+  'GUSD Amount GUSD',
+  'Fee (GUSD) GUSD',
+  'GUSD Balance GUSD',
+  'SOL Amount SOL',
+  'Fee (SOL) SOL',
+  'SOL Balance SOL',
+  'MATIC Amount MATIC',
+  'Fee (MATIC) MATIC',
+  'MATIC Balance MATIC',
+  'Trade ID',
+  'Order ID',
+  'Order Date',
+  'Order Time',
+  'Client Order ID',
+  'API Session',
+  'Tx Hash',
+  'Deposit Destination',
+  'Deposit Tx Output',
+  'Withdrawal Destination',
+  'Withdrawal Tx Output',
+]
+
+const krakenColumns = [
+  'txid',
+  'ordertxid',
+  'pair',
+  'time',
+  'type',
+  'ordertype',
+  'price',
+  'cost',
+  'fee',
+  'vol',
+  'margin',
+  'misc',
+  'ledgers',
+]
+
 const pairMap = new Map<string, { from?: Ticker; to?: Ticker }>([
   ['BATUSD', { from: 'BAT', to: 'USD' } as const],
   ['AVAXUSD', { from: 'AVAX', to: 'USD' } as const],
@@ -127,73 +186,6 @@ const geminiTradeToCointracking = (trade: GeminiTrade): CoinTrackingTrade | null
 /** Loads a trade history file in Cointracking or Kraken format. */
 const loadTradeHistoryFile = async (file: string | null): Promise<CoinTrackingTrade[]> => {
   if (!file) return []
-  const cointrackingColumns = [
-    'Type',
-    'Buy',
-    'Cur.',
-    'Sell',
-    'Cur.',
-    'Exchange',
-    'Trade Group',
-    'Comment',
-    'Trade Date',
-  ]
-
-  const geminiColumns = [
-    'Date',
-    'Time (UTC)',
-    'Type',
-    'Symbol',
-    'Specification',
-    'Liquidity Indicator',
-    'Trading Fee Rate (bps)',
-    'USD Amount USD',
-    'Fee (USD) USD',
-    'USD Balance USD',
-    'BTC Amount BTC',
-    'Fee (BTC) BTC',
-    'BTC Balance BTC',
-    'ETH Amount ETH',
-    'Fee (ETH) ETH',
-    'ETH Balance ETH',
-    'GUSD Amount GUSD',
-    'Fee (GUSD) GUSD',
-    'GUSD Balance GUSD',
-    'SOL Amount SOL',
-    'Fee (SOL) SOL',
-    'SOL Balance SOL',
-    'MATIC Amount MATIC',
-    'Fee (MATIC) MATIC',
-    'MATIC Balance MATIC',
-    'Trade ID',
-    'Order ID',
-    'Order Date',
-    'Order Time',
-    'Client Order ID',
-    'API Session',
-    'Tx Hash',
-    'Deposit Destination',
-    'Deposit Tx Output',
-    'Withdrawal Destination',
-    'Withdrawal Tx Output',
-  ]
-
-  const krakenColumns = [
-    'txid',
-    'ordertxid',
-    'pair',
-    'time',
-    'type',
-    'ordertype',
-    'price',
-    'cost',
-    'fee',
-    'vol',
-    'margin',
-    'misc',
-    'ledgers',
-  ]
-
   const text = fs.readFileSync(file, 'utf-8')
   const headerColumns = text
     .split('\n')[0]
@@ -202,42 +194,33 @@ const loadTradeHistoryFile = async (file: string | null): Promise<CoinTrackingTr
 
   // CoinTracking
   if (cointrackingColumns.every(col => headerColumns.includes(col))) {
-    return [...(await csvtojson().fromString(fixCointrackingHeader(text)))]
+    return (await csvtojson().fromString(fixCointrackingHeader(text))) as CoinTrackingTrade[]
   }
   // Gemini
   else if (geminiColumns.every(col => headerColumns.includes(col))) {
     const geminiTrades = (await csvtojson().fromString(text)) as GeminiTrade[]
-    return (
-      geminiTrades
-        // convert Gemini schema to Cointracking schema
-        .map(geminiTradeToCointracking)
-        .filter(nonNull)
-    )
+    return geminiTrades.map(geminiTradeToCointracking).filter(nonNull)
   }
   // Kraken
   else if (krakenColumns.every(col => headerColumns.includes(col))) {
-    return (
-      [...(await csvtojson().fromString(text))]
-        // convert Kraken schema to Cointracking
-        // add withdrawal
-        .map(row => {
-          const trade = krakenTradeToCointracking(row)
-          return [
-            trade,
-            // assume that funds are immediately withdrawn after a sale so that they are removed from the stock
-            trade && row.type === 'sell'
-              ? ({
-                  ...trade,
-                  Type: 'Withdrawal' as const,
-                  Buy: null,
-                  BuyCur: null,
-                } as CoinTrackingTrade)
-              : null,
-          ]
-        })
-        .flat()
-        .filter(nonNull)
-    )
+    return (await csvtojson().fromString(text))
+      .map(row => {
+        const trade = krakenTradeToCointracking(row)
+        return [
+          trade,
+          // assume that funds are immediately withdrawn after a sale so that they are removed from the stock
+          trade && row.type === 'sell'
+            ? ({
+                ...trade,
+                Type: 'Withdrawal' as const,
+                Buy: null,
+                BuyCur: null,
+              } as CoinTrackingTrade)
+            : null,
+        ]
+      })
+      .flat()
+      .filter(nonNull)
   } else {
     error('Unrecognized file header:', headerColumns)
     return []
