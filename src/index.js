@@ -1,7 +1,7 @@
-const memoize = require('nano-persistent-memoizer')
-const got = require('got')
-const secure = require('../data/secure.json')
-const Stock = require('./stock.js')
+import got from 'got'
+import memoize from 'nano-persistent-memoizer'
+import secure from '../data/secure.json' assert { type: 'json' }
+import Stock from './stock.js'
 
 const stock = Stock()
 
@@ -442,4 +442,4 @@ const cryptogains = async (txs, options = {}) => {
   }
 }
 
-module.exports = cryptogains
+export default cryptogains

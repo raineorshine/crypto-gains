@@ -1,11 +1,39 @@
-const csvtojson = require('csvtojson')
-const fs = require('fs')
-const json2csv = require('json2csv')
-const mkdir = require('make-dir')
-const path = require('path')
+import chalk from 'chalk'
+import csvtojson from 'csvtojson'
+import fs from 'fs'
+import json2csv from 'json2csv'
+import mkdir from 'make-dir'
+import path from 'path'
+import cryptogains from './index.js'
+
+interface Trade {
+  type: string
+  buy: number
+  cost: string
+  curBuy: string
+  sell: number
+  curSell: string
+  exchange: string
+  time: string
+  tradeDate: string
+  pair: string
+  price: number
+}
+
+interface Transaction {
+  date: string
+  dateAcquired: string
+  deferredGains?: number
+}
+
+interface Loan {
+  date: string
+  loanAmount: number
+  loanCurrency: string
+  interestEarnedUSD: number
+}
+
 const yargs = require('yargs')
-const cryptogains = require('./index.js')
-const chalk = require('chalk')
 
 const pairMap = new Map([
   ['BATUSD', { from: 'BAT', to: 'USD' }],
@@ -24,10 +52,11 @@ const pairMap = new Map([
 ])
 
 /** Extracts the currency symbols from a Kraken trading pair. */
-const pair = p => pairMap.get(p) || error(`Unrecognized trading pair: ${p}`)
+const pair = (p: string) => pairMap.get(p) || error(`Unrecognized trading pair: ${p}`)
 
 /** Loads a trade history file in Cointracking or Kraken format. */
-const loadTradeHistoryFile = async file => {
+const loadTradeHistoryFile = async (file: string | null) => {
+  if (!file) return []
   const cointrackingColumns = [
     'Type',
     'Buy',
@@ -90,11 +119,12 @@ const loadTradeHistoryFile = async file => {
     )
   } else {
     error('Unrecognized file header:', headerColumns)
+    return []
   }
 }
 
 /** Loads all trades from a file or directory. */
-const loadTrades = async inputPath => {
+const loadTrades = async (inputPath: string) => {
   if (isDir(inputPath)) {
     console.info('\nInput files (these MUST be in chronological order)')
     const tradeGroups = await Promise.all(
@@ -117,7 +147,7 @@ const loadTrades = async inputPath => {
 }
 
 /** Converts a trade in the Kraken schema to the Cointracking schema. */
-const krakenTradeToCointracking = trade => {
+const krakenTradeToCointracking = (trade: Trade) => {
   const { from, to } = pair(trade.pair)
   // ignore USDC -> USD trades
   if ((trade.type === 'buy' || trade.type === 'sell') && !from && !to) return null
@@ -139,30 +169,30 @@ const krakenTradeToCointracking = trade => {
 }
 
 /** Returns true if the given input path is a directory. */
-const isDir = inputPath => fs.lstatSync(inputPath).isDirectory()
+const isDir = (inputPath: string) => fs.lstatSync(inputPath).isDirectory()
 
 /** Returns true if the file is one of the ignored file names. */
-const ignoreTradeFile = file => file === '.DS_Store'
+const ignoreTradeFile = (file: string) => file === '.DS_Store'
 
 // replace duplicate Cur. with CurBuy, CurSell, CurFee
-const fixCointrackingHeader = input => {
+const fixCointrackingHeader = (input: string) => {
   const lines = input.split('\n')
-  return []
+  return ([] as string[])
     .concat(lines[0].replace('Cur.', 'CurBuy').replace('Cur.', 'CurSell').replace('Cur.', 'CurFee'), lines.slice(1))
     .join('\n')
 }
 
 /** Exits with an error code. */
-const error = (...msg) => {
+const error = (...msg: unknown[]) => {
   console.error(...msg)
   process.exit(1)
 }
 
 // convert trades array to CSV and restore header
-const toCSV = (trades, fields) => {
+const toCSV = (trades: unknown[], fields: { value: string; label: string }[]) => {
   const csv = json2csv.parse(trades, { delimiter: ',', fields })
   const csvLines = csv.split('\n')
-  return []
+  return ([] as string[])
     .concat(
       csvLines[0].replace('CurBuy', 'Cur.').replace('CurSell', 'Cur.').replace('CurFee', 'Cur.'),
       csvLines.slice(1),
@@ -171,20 +201,21 @@ const toCSV = (trades, fields) => {
 }
 
 // convert d-m-y date (e.g. 18.06.2016 15:14 0) to y-m-d
-const normalDate = d => `${d.slice(6, 10)}-${d.slice(3, 5)}-${d.slice(0, 2)} ${d.slice(11)}`
+const normalDate = (d: string) => `${d.slice(6, 10)}-${d.slice(3, 5)}-${d.slice(0, 2)} ${d.slice(11)}`
 
 // return true if the sale date is over a year from the acquisision date
-const isShortTerm = sale => new Date(normalDate(sale.date)) - new Date(normalDate(sale.dateAcquired)) < 3.154e10
+const isShortTerm = (sale: Transaction) =>
+  new Date(normalDate(sale.date)).getTime() - new Date(normalDate(sale.dateAcquired)).getTime() < 3.154e10
 
-const numberWithCommas = n => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+const numberWithCommas = (n: number) => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 
-const formatPrice = n => {
+const formatPrice = (n: number) => {
   const priceString = '$' + numberWithCommas(Math.round(n * 100) / 100)
   return chalk[n > 0 ? 'green' : n < 0 ? 'red' : 'cyan'](priceString)
 }
 
 // add two numbers
-const sum = (x, y) => x + y
+const sum = (x: number, y: number) => x + y
 
 /****************************************************************
  * RUN
@@ -202,17 +233,22 @@ const argv = yargs
   .option('verbose', { describe: 'Show more errors and warnings.' }).argv
 
 ;(async () => {
-  const outputByYear = async (year, sales, interest, likeKindExchanges) => {
+  const outputByYear = async (
+    year: string,
+    sales: (Transaction & { gain: number })[],
+    interest: Loan[],
+    likeKindExchanges: Transaction[],
+  ) => {
     const stSales = sales.filter(isShortTerm)
     const ltSales = sales.filter(sale => !isShortTerm(sale))
 
     const stSalesYear = stSales.filter(sale => sale.date.includes(year))
     const ltSalesYear = ltSales.filter(sale => sale.date.includes(year))
-    const interestYear = interest.filter(tx => tx.date.includes(year))
-    const likeKindExchangesYear = likeKindExchanges.filter(tx => tx.date.includes(year))
+    const interestYear = interest.filter(tx => tx.date.includes(year.toString()))
+    const likeKindExchangesYear = likeKindExchanges.filter((tx: Transaction) => tx.date.includes(year))
 
     const hasTrades =
-      stSalesYear.length > 0 || ltSalesYear.length > 0 || likeKindExchangesYear.length > 0 || interestYear > 0
+      stSalesYear.length > 0 || ltSalesYear.length > 0 || likeKindExchangesYear.length > 0 || interestYear.length > 0
     if (!hasTrades) return
 
     // summary
@@ -220,7 +256,7 @@ const argv = yargs
     if (likeKindExchangesYear.length > 0) {
       console.info(
         `${year} Like-Kind Exchange Deferred Gains (${likeKindExchangesYear.length})`,
-        formatPrice(likeKindExchangesYear.map(sale => sale.deferredGains).reduce(sum, 0)),
+        formatPrice(likeKindExchangesYear.map(sale => sale.deferredGains || 0).reduce(sum, 0)),
       )
     }
     console.info(
@@ -361,7 +397,7 @@ const argv = yargs
   console.info('Zero prices:', zeroPrices.length)
   console.info('')
 
-  for (y = 2016; y <= new Date().getFullYear(); y++) {
-    outputByYear(y, salesWithGain, interest, likeKindExchanges)
+  for (let y = 2016; y <= new Date().getFullYear(); y++) {
+    outputByYear(y.toString(), salesWithGain, interest, likeKindExchanges)
   }
 })()

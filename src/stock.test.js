@@ -1,5 +1,6 @@
-const Stock = require('./stock.js')
-const assert = require('assert')
+import assert from 'assert'
+import Stock from './stock.js'
+
 const closeEnough = (a, b) => Math.abs(a - b) <= 0.02
 
 describe('stock', () => {

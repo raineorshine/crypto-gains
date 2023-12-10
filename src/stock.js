@@ -179,4 +179,4 @@ function NoAvailablePurchaseError(msg) {
 NoAvailablePurchaseError.prototype = new Error()
 Stock.NoAvailablePurchaseError = NoAvailablePurchaseError
 
-module.exports = Stock
+export default Stock
