@@ -1,4 +1,4 @@
-interface Trade {
+interface KrakenTrade {
   type: string
   buy: number
   cost: string
@@ -12,4 +12,4 @@ interface Trade {
   price: number
 }
 
-export default Trade
+export default KrakenTrade

@@ -4,8 +4,8 @@ import fs from 'fs'
 import path from 'path'
 import CoinTrackingTrade from './@types/CoinTrackingTrade.js'
 import GeminiTrade from './@types/GeminiTrade.js'
+import KrakenTrade from './@types/KrakenTrade.js'
 import Ticker from './@types/Ticker.js'
-import Trade from './@types/Trade.js'
 import nonNull from './nonNull.js'
 
 // Corresponding type: CoinTrackingTrade
@@ -116,7 +116,7 @@ const fixCointrackingHeader = (input: string): string => {
 }
 
 /** Converts a trade in the Kraken schema to the Cointracking schema. */
-const krakenTradeToCointracking = (trade: Trade): CoinTrackingTrade | null => {
+const krakenTradeToCointracking = (trade: KrakenTrade): CoinTrackingTrade | null => {
   const { from, to } = pair(trade.pair)!
   // ignore USDC/GUSD -> USD trades
   if ((trade.type === 'buy' || trade.type === 'sell') && !from && !to) return null
@@ -203,7 +203,8 @@ const loadTradeHistoryFile = async (file: string | null): Promise<CoinTrackingTr
   }
   // Kraken
   else if (krakenColumns.every(col => headerColumns.includes(col))) {
-    return (await csvtojson().fromString(text))
+    const krakenTrades = (await csvtojson().fromString(text)) as KrakenTrade[]
+    return krakenTrades
       .map(row => {
         const trade = krakenTradeToCointracking(row)
         return [
