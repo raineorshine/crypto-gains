@@ -7,7 +7,6 @@ const currenciesWithMissingPrices = {
 const closeEnough = (a, b) => Math.abs(a - b) <= 0.02
 
 const Stock = () => {
-
   const lots = []
 
   const balance = cur => lots.filter(lot => lot.cur === cur).reduce((prev, item) => prev + item.amount, 0)
@@ -28,7 +27,10 @@ const Stock = () => {
     while (pending > 0) {
       // must use index since lots are not removed with withdraw
       const lot = curLots[type === 'fifo' ? i++ : i--]
-      if (!lot) throw new NoAvailablePurchaseError(`withdraw: No available purchase for ${amount} ${cur} on ${date} (${amount - pending} ${cur} found)`)
+      if (!lot)
+        throw new NoAvailablePurchaseError(
+          `withdraw: No available purchase for ${amount} ${cur} on ${date} (${amount - pending} ${cur} found)`,
+        )
 
       let lotDebit, cost
 
@@ -50,7 +52,7 @@ const Stock = () => {
         amount: lotDebit,
         cur,
         cost,
-        date: lot.date
+        date: lot.date,
       })
     }
 
@@ -66,7 +68,6 @@ const Stock = () => {
     let pending = sell
     const trades = []
     while (pending > 0) {
-
       // next lot with the sell currency
       let lot
 
@@ -79,13 +80,12 @@ const Stock = () => {
 
       // USD sale (i.e. crypto purchase): do not track USD in stock since it is the basis
       if (sellCur === 'USD') {
-          sellPartial = sell
-          costPartial = sell
-          pending = 0
+        sellPartial = sell
+        costPartial = sell
+        pending = 0
       }
       // Non-USD sale: actual trade
       else {
-
         // if a taxable sale (i.e. trading to USD), we can calculate the price directly from the trade
         if (buyCur === 'USD') {
           price = buy / sell
@@ -94,13 +94,16 @@ const Stock = () => {
         // get the next lot with the sell currency
         // it will be either completely partially consumed in the trade (mutation)
         lot = next(sellCur, type)
-        if (!lot) throw new NoAvailablePurchaseError(`trade: No available purchase for ${sell} ${sellCur} trade on ${date} (${sell - pending} ${sellCur} found)`)
+        if (!lot)
+          throw new NoAvailablePurchaseError(
+            `trade: No available purchase for ${sell} ${sellCur} trade on ${date} (${sell - pending} ${sellCur} found)`,
+          )
 
         // lot has a larger supply than is needed
         if (lot.amount > pending || closeEnough(lot.amount, pending)) {
           sellPartial = pending
           costPartial = lot.cost * (sellPartial / lot.amount) // proportional cost of the amount that is taken from the lot
-          lot.amount -= pending   // debit sell amount from lot
+          lot.amount -= pending // debit sell amount from lot
           lot.cost -= costPartial // debit partial cost from lot
           pending = 0
         }
@@ -139,7 +142,7 @@ const Stock = () => {
         // transfer the deferred gains from the old lot to the new lot
         // we don't need to add old lot's deferred gains since costPartial still represents the original cost basis of the like-kind exchange
         deferredGains: isLikekind ? costPartialNew - costPartial : 0,
-        date: lot && isLikekind ? lot.date : date
+        date: lot && isLikekind ? lot.date : date,
       }
 
       // do not store new lot for crypto sale to USD
@@ -159,7 +162,7 @@ const Stock = () => {
         // thus a sum of deferred gains can be made without including any gains more than once
         deferredGains: lotNew.deferredGains - (lot?.deferredGains || 0),
         date, // include this even though it is an argument in order to make concatenated trades easier
-        dateAcquired: lot ? lot.date : date
+        dateAcquired: lot ? lot.date : date,
       }
       trades.push(tradeNew)
     }
@@ -170,7 +173,9 @@ const Stock = () => {
   return { balance, deposit, withdraw, trade }
 }
 
-function NoAvailablePurchaseError(msg) { this.message = msg }
+function NoAvailablePurchaseError(msg) {
+  this.message = msg
+}
 NoAvailablePurchaseError.prototype = new Error()
 Stock.NoAvailablePurchaseError = NoAvailablePurchaseError
 

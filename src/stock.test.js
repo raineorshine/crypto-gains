@@ -3,7 +3,6 @@ const assert = require('assert')
 const closeEnough = (a, b) => Math.abs(a - b) <= 0.02
 
 describe('stock', () => {
-
   describe('deposit', () => {
     it('basic functionality', () => {
       const stock = Stock()
@@ -32,7 +31,7 @@ describe('stock', () => {
         buy: 10,
         buyCur: 'ETH',
         date,
-        price: 400
+        price: 400,
       })
       assert.deepEqual(trades, [
         {
@@ -43,8 +42,8 @@ describe('stock', () => {
           cost: 4000,
           deferredGains: 0,
           date,
-          dateAcquired: date
-        }
+          dateAcquired: date,
+        },
       ])
       assert.equal(stock.balance('BTC'), 0)
       assert.equal(stock.balance('ETH'), 10)
@@ -62,7 +61,7 @@ describe('stock', () => {
         buyCur: 'ETH',
         date,
         price: 500,
-        type: 'lifo'
+        type: 'lifo',
       })
       assert.deepEqual(trades, [
         {
@@ -73,8 +72,8 @@ describe('stock', () => {
           cost: 5000,
           deferredGains: 0,
           date,
-          dateAcquired: date
-        }
+          dateAcquired: date,
+        },
       ])
       assert.equal(stock.balance('BTC'), 1)
       assert.equal(stock.balance('ETH'), 10)
@@ -103,19 +102,19 @@ describe('stock', () => {
           cost: 4000, // original cost basis
           deferredGains: 4000,
           date: now,
-          dateAcquired
-        }
+          dateAcquired,
+        },
       ])
       assert.equal(stock.balance('BTC'), 1)
       assert.equal(stock.balance('ETH'), 10)
 
       const trades2 = stock.trade({
         sell: 10,
-        sellCur:  'ETH',
+        sellCur: 'ETH',
         buy: 1,
         buyCur: 'BTC',
         date: now,
-        price: 8000
+        price: 8000,
       })
       assert.deepEqual(trades2, [
         {
@@ -126,8 +125,8 @@ describe('stock', () => {
           cost: 4000,
           deferredGains: 0,
           date: now,
-          dateAcquired // original date
-        }
+          dateAcquired, // original date
+        },
       ])
       assert.equal(stock.balance('BTC'), 2)
       assert.equal(stock.balance('ETH'), 0)
@@ -158,8 +157,8 @@ describe('stock', () => {
           cost: 4000, // original cost basis of purchased BTC
           deferredGains: 0,
           date: now,
-          dateAcquired
-        }
+          dateAcquired,
+        },
       ])
       assert.equal(stock.balance('BTC'), 1)
       assert.equal(stock.balance('ETH'), 10)
@@ -167,7 +166,7 @@ describe('stock', () => {
       // sell the 10 ETH for 1 BTC @ $8000 (less than what we bought it for)
       const trades2 = stock.trade({
         sell: 10,
-        sellCur:  'ETH',
+        sellCur: 'ETH',
         buy: 1,
         buyCur: 'BTC',
         date: now,
@@ -182,8 +181,8 @@ describe('stock', () => {
           cost: 10000, // original cost basis of purchased ETH
           deferredGains: 0,
           date: now,
-          dateAcquired: now // new date
-        }
+          dateAcquired: now, // new date
+        },
       ])
       assert.equal(stock.balance('BTC'), 2)
       assert.equal(stock.balance('ETH'), 0)
@@ -195,11 +194,11 @@ describe('stock', () => {
       stock.deposit(1, 'BTC', 4000, date)
       const trades = stock.trade({
         sell: 0.5,
-        sellCur:  'BTC',
+        sellCur: 'BTC',
         buy: 5,
         buyCur: 'ETH',
         date: date,
-        price: 400
+        price: 400,
       })
       assert.deepEqual(trades, [
         {
@@ -210,8 +209,8 @@ describe('stock', () => {
           cost: 2000,
           deferredGains: 0,
           date,
-          dateAcquired: date
-        }
+          dateAcquired: date,
+        },
       ])
       assert.equal(stock.balance('BTC'), 0.5)
       assert.equal(stock.balance('ETH'), 5)
@@ -227,7 +226,7 @@ describe('stock', () => {
         sellCur: 'BTC',
         buy: 10,
         buyCur: 'ETH',
-        date: date
+        date: date,
       })
       assert.deepEqual(trades, [
         {
@@ -238,8 +237,8 @@ describe('stock', () => {
           cost: 3000,
           deferredGains: 0,
           date,
-          dateAcquired: date
-        }
+          dateAcquired: date,
+        },
       ])
       assert.equal(stock.balance('BTC'), 1)
       assert.equal(stock.balance('ETH'), 10)
@@ -252,11 +251,11 @@ describe('stock', () => {
       stock.deposit(10, 'BTC', 40000, date)
       const trades = stock.trade({
         sell: 15,
-        sellCur:  'BTC',
+        sellCur: 'BTC',
         buy: 150,
         buyCur: 'ETH',
         date: date,
-        price: 4000
+        price: 4000,
       })
       assert.deepEqual(trades, [
         {
@@ -267,7 +266,7 @@ describe('stock', () => {
           cost: 30000,
           deferredGains: 0,
           date,
-          dateAcquired: date
+          dateAcquired: date,
         },
         {
           buy: 50,
@@ -277,7 +276,7 @@ describe('stock', () => {
           cost: 20000,
           deferredGains: 0,
           date,
-          dateAcquired: date
+          dateAcquired: date,
         },
       ])
       assert.equal(stock.balance('BTC'), 5)
@@ -293,7 +292,7 @@ describe('stock', () => {
         sellCur: 'BTC',
         buy: 10,
         buyCur: 'ETH',
-        date: date
+        date: date,
       })
       assert.equal(stock.balance('BTC'), 0)
       assert.equal(stock.balance('ETH'), 10)
@@ -304,14 +303,15 @@ describe('stock', () => {
       const date = new Date()
       let error
       stock.deposit(10, 'BTC', 40000, date)
-      const errorF = () => stock.trade({
-        sell: 11,
-        sellCur:  'BTC',
-        buy: 110,
-        buyCur: 'ETH',
-        date: date,
-        price: 400
-      })
+      const errorF = () =>
+        stock.trade({
+          sell: 11,
+          sellCur: 'BTC',
+          buy: 110,
+          buyCur: 'ETH',
+          date: date,
+          price: 400,
+        })
       assert.throws(errorF)
     })
 
@@ -331,7 +331,6 @@ describe('stock', () => {
       assert(closeEnough(stock.balance('BTC'), 0))
       assert.equal(stock.balance('ETH'), 100)
     })
-
   })
 
   describe('withdraw', () => {
@@ -345,8 +344,8 @@ describe('stock', () => {
           amount: 1,
           cur: 'BTC',
           cost: 4000,
-          date
-        }
+          date,
+        },
       ])
     })
 
@@ -360,8 +359,8 @@ describe('stock', () => {
           amount: 1,
           cur: 'BTC',
           cost: 4000,
-          date
-        }
+          date,
+        },
       ])
       assert.equal(stock.balance('BTC'), 10)
     })
@@ -386,13 +385,13 @@ describe('stock', () => {
           amount: 10,
           cur: 'BTC',
           cost: 30000,
-          date
+          date,
         },
         {
           amount: 5,
           cur: 'BTC',
           cost: 20000,
-          date
+          date,
         },
       ])
     })
@@ -408,8 +407,8 @@ describe('stock', () => {
           amount: 1,
           cur: 'BTC',
           cost: 5000,
-          date
-        }
+          date,
+        },
       ])
     })
 
@@ -440,8 +439,8 @@ describe('stock', () => {
           cost: 4000, // cost basis is NOT updated in a like-kind exchange
           deferredGains: 1000, // new cost basis (5000) - old cost basis (4000)
           date: now,
-          dateAcquired
-        }
+          dateAcquired,
+        },
       ])
       assert.equal(stock.balance('BTC'), 0)
       assert.equal(stock.balance('ETH'), 10)
@@ -451,12 +450,12 @@ describe('stock', () => {
       // deferred gains increase even more after another profitable exchange
       const exchanges2 = stock.trade({
         sell: 10,
-        sellCur:  'ETH',
+        sellCur: 'ETH',
         buy: 90,
         buyCur: 'LTC',
         date: now,
         price: 100,
-        isLikekind: true
+        isLikekind: true,
       })
 
       assert.deepEqual(exchanges2, [
@@ -468,8 +467,8 @@ describe('stock', () => {
           cost: 4000, // cost basis is NOT updated in a like-kind exchange
           deferredGains: 5000, // new cost basis (9000) - old cost basis (4000)
           date: now,
-          dateAcquired
-        }
+          dateAcquired,
+        },
       ])
       assert.equal(stock.balance('BTC'), 0)
       assert.equal(stock.balance('ETH'), 0)
@@ -483,7 +482,7 @@ describe('stock', () => {
         buyCur: 'BTC',
         date: now,
         price: 10000,
-        isLikekind: true
+        isLikekind: true,
       })
 
       assert.deepEqual(exchanges3, [
@@ -495,8 +494,8 @@ describe('stock', () => {
           cost: 2000, // old cost basis but half as much since half the amount was sold
           deferredGains: 18000, // new cost basis (20000) - old cost basis ($2000)
           date: now,
-          dateAcquired
-        }
+          dateAcquired,
+        },
       ])
       assert.equal(stock.balance('BTC'), 2)
       assert.equal(stock.balance('ETH'), 0)
@@ -548,7 +547,7 @@ describe('stock', () => {
         buyCur: 'ETH',
         date: now,
         price: 500,
-        isLikekind: true
+        isLikekind: true,
       })
 
       assert.deepEqual(exchanges, [
@@ -560,8 +559,8 @@ describe('stock', () => {
           cost: 4000, // cost basis is NOT updated in a like-kind exchange
           deferredGains: 1000, // new cost basis (5000) - old cost basis (4000)
           date: now,
-          dateAcquired
-        }
+          dateAcquired,
+        },
       ])
       assert.equal(stock.balance('BTC'), 0)
       assert.equal(stock.balance('ETH'), 10)
@@ -575,7 +574,7 @@ describe('stock', () => {
         buyCur: 'LTC',
         date: now,
         price: 500,
-        isLikekind: true
+        isLikekind: true,
       })
 
       assert.deepEqual(trades2, [
@@ -587,8 +586,8 @@ describe('stock', () => {
           cost: 4000, // cost basis is NOT updated in a like-kind exchange
           deferredGains: -1500, // new cost basis (2500) - old cost basis (4000)
           date: now,
-          dateAcquired
-        }
+          dateAcquired,
+        },
       ])
       assert.equal(stock.balance('BTC'), 0)
       assert.equal(stock.balance('ETH'), 0)
@@ -602,7 +601,7 @@ describe('stock', () => {
         buyCur: 'BTC',
         date: now,
         price: 8000,
-        isLikekind: true
+        isLikekind: true,
       })
 
       assert.deepEqual(exchanges3, [
@@ -614,14 +613,12 @@ describe('stock', () => {
           cost: 4000, // cost basis is NOT updated in a like-kind exchange
           deferredGains: 12000, // new cost basis (16000) - old cost basis (4000)
           date: now,
-          dateAcquired
-        }
+          dateAcquired,
+        },
       ])
       assert.equal(stock.balance('BTC'), 2)
       assert.equal(stock.balance('ETH'), 0)
       assert.equal(stock.balance('LTC'), 0)
     })
-
   })
-
 })
