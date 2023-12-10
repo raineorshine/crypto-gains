@@ -10,7 +10,7 @@ import loadTrades from './loadTrades.js'
 const yargs = require('yargs')
 
 // convert trades array to CSV and restore header
-const toCSV = (trades: unknown[], fields: { value: string; label: string }[]) => {
+const toCSV = (trades: unknown[], fields: { value: string; label: string }[]): string => {
   const csv = json2csv.parse(trades, { delimiter: ',', fields })
   const csvLines = csv.split('\n')
   return ([] as string[])
@@ -22,21 +22,21 @@ const toCSV = (trades: unknown[], fields: { value: string; label: string }[]) =>
 }
 
 // convert d-m-y date (e.g. 18.06.2016 15:14 0) to y-m-d
-const normalDate = (d: string) => `${d.slice(6, 10)}-${d.slice(3, 5)}-${d.slice(0, 2)} ${d.slice(11)}`
+const normalDate = (d: string): string => `${d.slice(6, 10)}-${d.slice(3, 5)}-${d.slice(0, 2)} ${d.slice(11)}`
 
 // return true if the sale date is over a year from the acquisision date
-const isShortTerm = (sale: Transaction) =>
+const isShortTerm = (sale: Transaction): boolean =>
   new Date(normalDate(sale.date)).getTime() - new Date(normalDate(sale.dateAcquired)).getTime() < 3.154e10
 
-const numberWithCommas = (n: number) => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+const numberWithCommas = (n: number): string => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 
-const formatPrice = (n: number) => {
+const formatPrice = (n: number): string => {
   const priceString = '$' + numberWithCommas(Math.round(n * 100) / 100)
   return chalk[n > 0 ? 'green' : n < 0 ? 'red' : 'cyan'](priceString)
 }
 
 // add two numbers
-const sum = (x: number, y: number) => x + y
+const sum = (x: number, y: number): number => x + y
 
 /****************************************************************
  * RUN

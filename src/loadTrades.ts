@@ -245,7 +245,7 @@ const loadTradeHistoryFile = async (file: string | null): Promise<CoinTrackingTr
 }
 
 /** Loads all trades from a file or directory. */
-const loadTrades = async (inputPath: string, limit?: number) => {
+const loadTrades = async (inputPath: string, limit?: number): Promise<CoinTrackingTrade[]> => {
   if (isDir(inputPath)) {
     console.info('\nInput files (these MUST be in chronological order)')
     const tradeGroups = await Promise.all(
