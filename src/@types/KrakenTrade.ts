@@ -1,5 +1,5 @@
 interface KrakenTrade {
-  type: string
+  type: 'buy' | 'sell' | 'deposit' | 'withdrawal'
   buy: number
   cost: string
   curBuy: string

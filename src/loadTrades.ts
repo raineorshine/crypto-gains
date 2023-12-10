@@ -125,7 +125,7 @@ const krakenTradeToCointracking = (trade: KrakenTrade): CoinTrackingTrade | null
       trade.type === 'buy' || trade.type === 'sell'
         ? 'Trade'
         : (`${trade.type[0].toUpperCase()}${trade.type.slice(1).toLowerCase()}` as CoinTrackingTrade['Type']),
-    Buy: trade.type === ' buy' || trade.type === 'deposit' ? +trade.cost / trade.price : +trade.cost,
+    Buy: trade.type === 'buy' || trade.type === 'deposit' ? +trade.cost / trade.price : +trade.cost,
     CurBuy: trade.type === 'buy' || trade.type === 'deposit' ? from : 'USD',
     Sell: trade.type === 'sell' ? +trade.cost / trade.price : +trade.cost,
     CurSell: trade.type === 'sell' ? from : 'USD',
