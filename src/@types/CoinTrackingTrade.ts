@@ -1,8 +1,8 @@
 interface CoinTrackingTrade {
   Type: 'Trade' | 'Deposit' | 'Withdrawal' | 'Spend' | 'Lost' | 'Income'
-  Buy: number
+  Buy: number | null
   CurBuy?: string
-  Sell: number
+  Sell: number | null
   CurSell?: string
   Exchange: string
   'Trade Group'?: string
