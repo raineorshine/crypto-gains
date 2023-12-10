@@ -4,7 +4,6 @@ const json2csv = require('json2csv')
 const mkdir = require('make-dir')
 const path = require('path')
 const yargs = require('yargs')
-const Stock = require('./stock.js')
 const cryptogains = require('./index.js')
 const chalk = require('chalk')
 
