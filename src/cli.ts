@@ -130,6 +130,7 @@ const loadTrades = async (inputPath: string) => {
     const tradeGroups = await Promise.all(
       fs
         .readdirSync(inputPath)
+        .sort()
         .map(file => {
           const fullPath = path.resolve(inputPath, file)
           if (isDir(fullPath) || ignoreTradeFile(file)) return null
