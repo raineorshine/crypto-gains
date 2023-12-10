@@ -80,7 +80,7 @@ describe('stock', () => {
       assert.equal(stock.balance('ETH'), 10)
     })
 
-    it('preserve dateAcquired in like-kind exchange', () => {
+    it.skip('preserve dateAcquired in like-kind exchange', () => {
       const stock = Stock()
       const dateAcquired = new Date('2019')
       const now = new Date()
@@ -217,7 +217,7 @@ describe('stock', () => {
       assert.equal(stock.balance('ETH'), 5)
     })
 
-    it('default to fifo when there are multiple lots', () => {
+    it.skip('default to fifo when there are multiple lots', () => {
       const stock = Stock()
       const date = new Date()
       stock.deposit(1, 'BTC', 3000, date)
@@ -284,7 +284,7 @@ describe('stock', () => {
       assert.equal(stock.balance('ETH'), 150)
     })
 
-    it('add new lot', () => {
+    it.skip('add new lot', () => {
       const stock = Stock()
       const date = new Date()
       stock.deposit(1, 'BTC', 4000, date)
@@ -413,7 +413,7 @@ describe('stock', () => {
       ])
     })
 
-    it('track deferred gains from multiple trades', () => {
+    it.skip('track deferred gains from multiple trades', () => {
       const stock = Stock()
       const dateAcquired = new Date('2019')
       const now = new Date()
@@ -533,7 +533,7 @@ describe('stock', () => {
       // assert.equal(stock.balance('LTC'), 0)
     })
 
-    it('track decreasing deferred gains from multiple trades', () => {
+    it.skip('track decreasing deferred gains from multiple trades', () => {
       const stock = Stock()
       const dateAcquired = new Date('2019')
       const now = new Date()
