@@ -6,6 +6,58 @@ import mkdir from 'make-dir'
 import path from 'path'
 import cryptogains from './index.js'
 
+interface GeminiTrade {
+  Date: string
+  'Time (UTC)': string
+  Type: 'Buy' | 'Sell' | 'Debit' | 'Credit'
+  Symbol: string
+  Specification: string
+  'Liquidity Indicator': string
+  'Trading Fee Rate (bps)': string
+  'USD Amount USD': string
+  'Fee (USD) USD': string
+  'USD Balance USD': string
+  'BTC Amount BTC': string
+  'Fee (BTC) BTC': string
+  'BTC Balance BTC': string
+  'ETH Amount ETH': string
+  'Fee (ETH) ETH': string
+  'ETH Balance ETH': string
+  'GUSD Amount GUSD': string
+  'Fee (GUSD) GUSD': string
+  'GUSD Balance GUSD': string
+  'SOL Amount SOL': string
+  'Fee (SOL) SOL': string
+  'SOL Balance SOL': string
+  'MATIC Amount MATIC': string
+  'Fee (MATIC) MATIC': string
+  'MATIC Balance MATIC': string
+  'Trade ID': string
+  'Order ID': string
+  'Order Date': string
+  'Order Time': string
+  'Client Order ID': string
+  'API Session': string
+  'Tx Hash': string
+  'Deposit Destination': string
+  'Deposit Tx Output': string
+  'Withdrawal Destination': string
+  'Withdrawal Tx Output': string
+}
+
+interface CoinTrackingTrade {
+  Type: 'Trade' | 'Deposit' | 'Withdrawal' | 'Spend' | 'Lost' | 'Income'
+  Buy: number
+  CurBuy?: string
+  Sell: number
+  CurSell?: string
+  Exchange: string
+  'Trade Group'?: string
+  Comment?: string
+  'Trade Date': string
+  Price?: number
+}
+
 interface Trade {
   type: string
   buy: number
@@ -36,19 +88,28 @@ interface Loan {
 const yargs = require('yargs')
 
 const pairMap = new Map([
-  ['BATUSD', { from: 'BAT', to: 'USD' }],
-  ['AVAXUSD', { from: 'AVAX', to: 'USD' }],
-  ['DAIUSD', { from: 'DAI', to: 'USD' }],
-  ['EOSUSD', { from: 'EOS', to: 'USD' }],
-  ['GNOUSD', { from: 'GNO', to: 'USD' }],
-  ['SOLUSD', { from: 'SOL', to: 'USD' }],
-  ['UNIUSD', { from: 'UNI', to: 'USD' }],
+  ['BATUSD', { from: 'BAT', to: 'USD' } as const],
+  ['AVAXUSD', { from: 'AVAX', to: 'USD' } as const],
+  ['DAIUSD', { from: 'DAI', to: 'USD' } as const],
+  ['EOSUSD', { from: 'EOS', to: 'USD' } as const],
+  ['GNOUSD', { from: 'GNO', to: 'USD' } as const],
+  ['GNOUSD', { from: 'GNO', to: 'USD' } as const],
+  ['MATICUSD', { from: 'MATIC', to: 'USD' } as const],
+  ['SOLUSD', { from: 'SOL', to: 'USD' } as const],
+  ['UNIUSD', { from: 'UNI', to: 'USD' } as const],
+  ['GUSD', {}],
+  ['GUSDUSD', {}],
+  ['USD', {}],
   ['USDCUSD', {}],
   ['USDTZUSD', {}],
-  ['XBTUSDC', { from: 'BTC', to: 'USD' }],
-  ['XETHZUSD', { from: 'ETH', to: 'USD' }],
-  ['XXBTZUSD', { from: 'BTC', to: 'USD' }],
-  ['XXLMZUSD', { from: 'XLM', to: 'USD' }],
+  ['BTC', { from: 'BTC', to: 'USD' } as const],
+  ['BTCUSD', { from: 'BTC', to: 'USD' } as const],
+  ['XBTUSDC', { from: 'BTC', to: 'USD' } as const],
+  ['ETH', { from: 'ETH', to: 'USD' } as const],
+  ['ETHUSD', { from: 'ETH', to: 'USD' } as const],
+  ['XETHZUSD', { from: 'ETH', to: 'USD' } as const],
+  ['XXBTZUSD', { from: 'BTC', to: 'USD' } as const],
+  ['XXLMZUSD', { from: 'XLM', to: 'USD' } as const],
 ])
 
 /** Extracts the currency symbols from a Kraken trading pair. */
@@ -68,6 +129,46 @@ const loadTradeHistoryFile = async (file: string | null) => {
     'Comment',
     'Trade Date',
   ]
+
+  const geminiColumns = [
+    'Date',
+    'Time (UTC)',
+    'Type',
+    'Symbol',
+    'Specification',
+    'Liquidity Indicator',
+    'Trading Fee Rate (bps)',
+    'USD Amount USD',
+    'Fee (USD) USD',
+    'USD Balance USD',
+    'BTC Amount BTC',
+    'Fee (BTC) BTC',
+    'BTC Balance BTC',
+    'ETH Amount ETH',
+    'Fee (ETH) ETH',
+    'ETH Balance ETH',
+    'GUSD Amount GUSD',
+    'Fee (GUSD) GUSD',
+    'GUSD Balance GUSD',
+    'SOL Amount SOL',
+    'Fee (SOL) SOL',
+    'SOL Balance SOL',
+    'MATIC Amount MATIC',
+    'Fee (MATIC) MATIC',
+    'MATIC Balance MATIC',
+    'Trade ID',
+    'Order ID',
+    'Order Date',
+    'Order Time',
+    'Client Order ID',
+    'API Session',
+    'Tx Hash',
+    'Deposit Destination',
+    'Deposit Tx Output',
+    'Withdrawal Destination',
+    'Withdrawal Tx Output',
+  ]
+
   const krakenColumns = [
     'txid',
     'ordertxid',
@@ -83,6 +184,7 @@ const loadTradeHistoryFile = async (file: string | null) => {
     'misc',
     'ledgers',
   ]
+
   const text = fs.readFileSync(file, 'utf-8')
   const headerColumns = text
     .split('\n')[0]
@@ -92,6 +194,16 @@ const loadTradeHistoryFile = async (file: string | null) => {
   // CoinTracking
   if (cointrackingColumns.every(col => headerColumns.includes(col))) {
     return [...(await csvtojson().fromString(fixCointrackingHeader(text)))]
+  }
+  // Gemini
+  else if (geminiColumns.every(col => headerColumns.includes(col))) {
+    const geminiTrades = (await csvtojson().fromString(text)) as GeminiTrade[]
+    return (
+      geminiTrades
+        // convert Gemini schema to Cointracking schema
+        .map(geminiTradeToCointracking)
+        .filter(x => x)
+    )
   }
   // Kraken
   else if (krakenColumns.every(col => headerColumns.includes(col))) {
@@ -148,15 +260,15 @@ const loadTrades = async (inputPath: string) => {
 }
 
 /** Converts a trade in the Kraken schema to the Cointracking schema. */
-const krakenTradeToCointracking = (trade: Trade) => {
+const krakenTradeToCointracking = (trade: Trade): CoinTrackingTrade | null => {
   const { from, to } = pair(trade.pair)
-  // ignore USDC -> USD trades
+  // ignore USDC/GUSD -> USD trades
   if ((trade.type === 'buy' || trade.type === 'sell') && !from && !to) return null
   return {
     Type:
       trade.type === 'buy' || trade.type === 'sell'
         ? 'Trade'
-        : `${trade.type[0].toUpperCase()}${trade.type.slice(1).toLowerCase()}`,
+        : (`${trade.type[0].toUpperCase()}${trade.type.slice(1).toLowerCase()}` as CoinTrackingTrade['Type']),
     Buy: trade.type === ' buy' || trade.type === 'deposit' ? +trade.cost / trade.price : +trade.cost,
     CurBuy: trade.type === 'buy' || trade.type === 'deposit' ? from : 'USD',
     Sell: trade.type === 'sell' ? +trade.cost / trade.price : +trade.cost,
@@ -166,6 +278,52 @@ const krakenTradeToCointracking = (trade: Trade) => {
     // Use Kraken-provided price
     // Not part of Cointracking data schema
     Price: +trade.price,
+  }
+}
+
+/** Converts a trade in the Gemini schema to the Cointracking schema. */
+const geminiTradeToCointracking = (trade: GeminiTrade): CoinTrackingTrade | null => {
+  const { from, to } = pair(trade.Symbol)
+  // ignore USDC/GUSD -> USD trades
+  if (
+    trade.Specification.includes('Gemini Credit Card Reward Payout') ||
+    trade.Symbol === 'USD' ||
+    ((trade.Type === 'Buy' || trade.Type === 'Sell') && !from && !to)
+  )
+    return null
+
+  const costRaw = trade[`${to} Amount ${to}` as keyof GeminiTrade]
+
+  if ((trade.Type === 'Buy' || trade.Type === 'Sell') && !costRaw) {
+    error(`Missing ${to} cost`, trade)
+  }
+
+  const buyAmountRaw = trade[`${from} Amount ${from}` as keyof GeminiTrade]
+
+  if ((trade.Type === 'Buy' || trade.Type === 'Sell') && !buyAmountRaw) {
+    error(`Missing ${from} buyAmount`, trade)
+  }
+
+  const cost = parseFloat((costRaw || '0').replace(/[$(),]/g, ''))
+  const buyAmount = parseFloat((buyAmountRaw || '0').replace(/[$(),]/g, ''))
+  const price = cost / buyAmount
+
+  return {
+    Type:
+      trade.Type === 'Buy' || trade.Type === 'Sell'
+        ? 'Trade'
+        : trade.Type === 'Credit'
+          ? 'Deposit'
+          : trade.Type === 'Debit'
+            ? 'Withdrawal'
+            : trade.Type,
+    Buy: trade.Type === 'Buy' || trade.Type === 'Credit' ? cost / price : cost,
+    CurBuy: trade.Type === 'Buy' || trade.Type === 'Credit' ? from : 'USD',
+    Sell: trade.Type === 'Sell' ? cost / price : cost,
+    CurSell: trade.Type === 'Sell' ? from : 'USD',
+    Exchange: 'Gemini',
+    'Trade Date': `${trade.Date} ${trade['Time (UTC)']}`,
+    Price: price,
   }
 }
 
