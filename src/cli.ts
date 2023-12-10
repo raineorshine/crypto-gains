@@ -4,86 +4,12 @@ import fs from 'fs'
 import json2csv from 'json2csv'
 import mkdir from 'make-dir'
 import path from 'path'
+import CoinTrackingTrade from './@types/CoinTrackingTrade.js'
+import GeminiTrade from './@types/GeminiTrade.js'
+import Loan from './@types/Load.js'
+import Trade from './@types/Trade.js'
+import Transaction from './@types/Transaction.js'
 import cryptogains from './index.js'
-
-interface GeminiTrade {
-  Date: string
-  'Time (UTC)': string
-  Type: 'Buy' | 'Sell' | 'Debit' | 'Credit'
-  Symbol: string
-  Specification: string
-  'Liquidity Indicator': string
-  'Trading Fee Rate (bps)': string
-  'USD Amount USD': string
-  'Fee (USD) USD': string
-  'USD Balance USD': string
-  'BTC Amount BTC': string
-  'Fee (BTC) BTC': string
-  'BTC Balance BTC': string
-  'ETH Amount ETH': string
-  'Fee (ETH) ETH': string
-  'ETH Balance ETH': string
-  'GUSD Amount GUSD': string
-  'Fee (GUSD) GUSD': string
-  'GUSD Balance GUSD': string
-  'SOL Amount SOL': string
-  'Fee (SOL) SOL': string
-  'SOL Balance SOL': string
-  'MATIC Amount MATIC': string
-  'Fee (MATIC) MATIC': string
-  'MATIC Balance MATIC': string
-  'Trade ID': string
-  'Order ID': string
-  'Order Date': string
-  'Order Time': string
-  'Client Order ID': string
-  'API Session': string
-  'Tx Hash': string
-  'Deposit Destination': string
-  'Deposit Tx Output': string
-  'Withdrawal Destination': string
-  'Withdrawal Tx Output': string
-}
-
-interface CoinTrackingTrade {
-  Type: 'Trade' | 'Deposit' | 'Withdrawal' | 'Spend' | 'Lost' | 'Income'
-  Buy: number
-  CurBuy?: string
-  Sell: number
-  CurSell?: string
-  Exchange: string
-  'Trade Group'?: string
-  Comment?: string
-  'Trade Date': string
-  Price?: number
-}
-
-interface Trade {
-  type: string
-  buy: number
-  cost: string
-  curBuy: string
-  sell: number
-  curSell: string
-  exchange: string
-  time: string
-  tradeDate: string
-  pair: string
-  price: number
-}
-
-interface Transaction {
-  date: string
-  dateAcquired: string
-  deferredGains?: number
-}
-
-interface Loan {
-  date: string
-  loanAmount: number
-  loanCurrency: string
-  interestEarnedUSD: number
-}
 
 const yargs = require('yargs')
 
