@@ -11,14 +11,14 @@
     "cryptogains": "bin.js"
   },
   "dependencies": {
-    "chalk": "^4.1.0",
-    "csvtojson": "^2.0.8",
-    "got": "^9.6.0",
-    "json2csv": "^4.3.3",
-    "make-dir": "^2.1.0",
+    "chalk": "^5.3.0",
+    "csvtojson": "^2.0.10",
+    "got": "^14.0.0",
+    "json2csv": "^5.0.7",
+    "make-dir": "^4.0.0",
     "nano-persistent-memoizer": "^0.1.2",
     "progress": "^2.0.3",
-    "yargs": "^13.2.2"
+    "yargs": "^17.7.2"
   },
   "devDependencies": {
     "@trivago/prettier-plugin-sort-imports": "^4.3.0",
