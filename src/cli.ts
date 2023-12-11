@@ -25,8 +25,11 @@ const toCSV = (trades: unknown[], fields: { value: string; label: string }[]): s
 const normalDate = (d: string): string => `${d.slice(6, 10)}-${d.slice(3, 5)}-${d.slice(0, 2)} ${d.slice(11)}`
 
 // return true if the sale date is over a year from the acquisision date
-const isShortTerm = (sale: Transaction): boolean =>
-  new Date(normalDate(sale.date)).getTime() - new Date(normalDate(sale.dateAcquired)).getTime() < 3.154e10
+const isShortTerm = (sale: Transaction): boolean => {
+  const buyTime = new Date(normalDate(sale.dateAcquired)).getTime()
+  const saleTime = new Date(normalDate(sale.date)).getTime()
+  return saleTime - buyTime < 3.154e10
+}
 
 const numberWithCommas = (n: number): string => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 

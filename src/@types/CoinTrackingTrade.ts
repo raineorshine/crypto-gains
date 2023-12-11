@@ -7,6 +7,7 @@ interface CoinTrackingTrade {
   Exchange: string
   'Trade Group'?: string
   Comment?: string
+  // dd.mm.yyyy hh:mm
   'Trade Date': string
   Price?: number
 }

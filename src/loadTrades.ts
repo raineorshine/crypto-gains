@@ -163,6 +163,7 @@ const geminiTradeToCointracking = (trade: GeminiTrade): CoinTrackingTrade | null
   const cost = parseFloat((costRaw || '0').replace(/[$(),]/g, ''))
   const buyAmount = parseFloat((buyAmountRaw || '0').replace(/[$(),]/g, ''))
   const price = cost / buyAmount
+  const [year, month, day] = trade.Date.split('-')
 
   return {
     Type:
@@ -178,7 +179,7 @@ const geminiTradeToCointracking = (trade: GeminiTrade): CoinTrackingTrade | null
     Sell: trade.Type === 'Sell' ? cost / price : cost,
     CurSell: trade.Type === 'Sell' ? from : 'USD',
     Exchange: 'Gemini',
-    'Trade Date': `${trade.Date} ${trade['Time (UTC)']}`,
+    'Trade Date': `${day}.${month}.${year} ${trade['Time (UTC)']}`,
     Price: price,
   }
 }

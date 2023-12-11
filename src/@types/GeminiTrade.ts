@@ -1,5 +1,7 @@
 interface GeminiTrade {
+  // yyyy-mm-dd
   Date: string
+  // hh:mm:ss.msm
   'Time (UTC)': string
   Type: 'Buy' | 'Sell' | 'Debit' | 'Credit'
   Symbol: string
