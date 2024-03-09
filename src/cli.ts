@@ -4,6 +4,7 @@ import json2csv from 'json2csv'
 import mkdir from 'make-dir'
 import Loan from './@types/Load.js'
 import Transaction from './@types/Transaction.js'
+import TransactionWithGain from './@types/TransactionWithGain.js'
 import cryptogains from './index.js'
 import loadTrades from './loadTrades.js'
 
@@ -59,7 +60,7 @@ const argv = yargs
 ;(async () => {
   const outputByYear = async (
     year: string,
-    sales: (Transaction & { gain: number })[],
+    sales: TransactionWithGain[],
     interest: Loan[],
     likeKindExchanges: Transaction[],
   ) => {
@@ -185,7 +186,7 @@ const argv = yargs
 
   // sale.buy is the USD acquired from the trade ("buy" USD)
   // sale.cost is the cost basis
-  const salesWithGain = sales.map(sale => ({ ...sale, gain: sale.buy - sale.cost }))
+  const salesWithGain: TransactionWithGain[] = sales.map(sale => ({ ...sale, gain: sale.buy - sale.cost }))
 
   const total =
     withdrawals.length +

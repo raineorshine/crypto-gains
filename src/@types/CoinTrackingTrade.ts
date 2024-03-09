@@ -5,6 +5,7 @@ interface CoinTrackingTrade {
   Sell: number | null
   CurSell?: string
   Exchange: string
+  Fee?: string
   'Trade Group'?: string
   Comment?: string
   // dd.mm.yyyy hh:mm

@@ -9,10 +9,20 @@ import Ticker from './@types/Ticker.js'
 import nonNull from './nonNull.js'
 
 // Corresponding type: CoinTrackingTrade
-const cointrackingColumns = ['Type', 'Buy', 'Cur.', 'Sell', 'Cur.', 'Exchange', 'Trade Group', 'Comment', 'Trade Date']
+const cointrackingColumns: (keyof CoinTrackingTrade | 'Cur.')[] = [
+  'Type',
+  'Buy',
+  'Cur.',
+  'Sell',
+  'Cur.',
+  'Exchange',
+  'Trade Group',
+  'Comment',
+  'Trade Date',
+]
 
 // Corresponding type: GeminiTrade
-const geminiColumns = [
+const geminiColumns: (keyof GeminiTrade)[] = [
   'Date',
   'Time (UTC)',
   'Type',
