@@ -25,12 +25,10 @@ Historical prices provided by the [cryptocompare API](https://min-api.cryptocomp
 
 ```sh
   --accounting  Accounting type: fifo/lifo.                [lifo|fifo (default)]
-  --exchange    Exchange for price lookups.                  [default: "cccagg"]
   --help        Show help                                              [boolean]
   --likekind    Allow like-kind exchange before 2018.            [default: true]
   --limit       Limit number of transactions processed.      [default: Infinity]
-  --mockprice   Mock price in place of cryptocompare lookups.
-  --output      Output directory for results.          [stdout if not specified]
+  --output      Output directory for results.                 [default: dry run]
   --verbose     Show more errors and warnings.
   --version     Show version number                                    [boolean]
 ```

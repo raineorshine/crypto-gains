@@ -124,9 +124,7 @@ const cryptogains = async (
   txs: CoinTrackingTrade[],
   options: {
     accounting?: 'fifo' | 'lifo'
-    exchange?: string
     likekind?: boolean
-    mockprice?: number
     verbose?: boolean
   } = {},
 ) => {
@@ -315,8 +313,7 @@ const cryptogains = async (
             const p =
               tx.Price ||
               (await tryPrice(tx, tx.CurSell, 'USD', day(normalDate(tx['Trade Date'])), {
-                ...options,
-                exchange: tx.Exchange as any,
+                exchange: tx.Exchange,
               })) ||
               0
             sales.push(
