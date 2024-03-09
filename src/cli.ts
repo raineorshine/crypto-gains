@@ -5,7 +5,7 @@ import mkdir from 'make-dir'
 import Loan from './@types/Loan.js'
 import Transaction from './@types/Transaction.js'
 import TransactionWithGain from './@types/TransactionWithGain.js'
-import cryptogains from './index.js'
+import cryptogains from './cryptogains.js'
 import loadTrades from './loadTrades.js'
 
 const yargs = require('yargs')

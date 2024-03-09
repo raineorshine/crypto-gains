@@ -1,13 +1,29 @@
+import fs from 'fs/promises'
 import got from 'got'
 import memoize from 'nano-persistent-memoizer'
-import secure from '../data/secure.json' assert { type: 'json' }
+import CoinTrackingTrade from './@types/CoinTrackingTrade.js'
+import Loan from './@types/Loan.js'
+import Ticker from './@types/Ticker.js'
+import Transaction from './@types/Transaction.js'
 import Stock from './stock.js'
+
+const secure = JSON.parse(await fs.readFile(new URL('../data/secure.json', import.meta.url), 'utf-8')) as {
+  airdropSymbols: string[]
+  cryptoCompareApiKey: string
+  icos: {
+    Buy: string
+    CurBuy: Ticker
+    Sell: string
+    CurSell: Ticker
+    Date: string
+  }[]
+}
 
 const stock = Stock()
 
 // group transactions by day
-const groupByDay = trades => {
-  const txsByDay = {}
+const groupByDay = (trades: CoinTrackingTrade[]) => {
+  const txsByDay: { [key: string]: CoinTrackingTrade[] } = {}
   for (let i = 0; i < trades.length; i++) {
     const key = day(trades[i]['Trade Date'])
     if (!(key in txsByDay)) {
@@ -19,29 +35,33 @@ const groupByDay = trades => {
 }
 
 // get the day of the date
-const day = date => date.split(' ')[0]
+const day = (date: string) => date.split(' ')[0]
 
 // convert d-m-y date (e.g. 18.06.2016 15:14 0) to y-m-d
-const normalDate = d => `${d.slice(6, 10)}-${d.slice(3, 5)}-${d.slice(0, 2)} ${d.slice(11)}`
+const normalDate = (d: string) => `${d.slice(6, 10)}-${d.slice(3, 5)}-${d.slice(0, 2)} ${d.slice(11)}`
 
 // get the opposite tx type: Deposit/Withdrawal
-const otherType = tx => (tx.Type === 'Deposit' ? 'Withdrawal' : 'Deposit')
+// TODO: What if type is not a Deposit or a Withdrawal?
+const otherType = (type: CoinTrackingTrade['Type']) => (type === 'Deposit' ? 'Withdrawal' : 'Deposit')
 
 // convert a string value to a number and set '-' to 0
-const z = v => (v === '-' ? 0 : +v)
+const z = (v: string | number) => (v === '-' ? 0 : +v)
 
 // checks if two txs are within a margin of error from each other
-const closeEnough = (tx1, tx2) => {
+const closeEnough = (tx1: CoinTrackingTrade, tx2: CoinTrackingTrade) => {
   const errorRange = tx1.CurBuy === 'BTC' ? 0.2 : tx1.CurBuy === 'ETH' ? 0.2 : 0.5
-  return Math.abs(z(tx1.Buy) - z(tx2.Sell)) < errorRange && Math.abs(z(tx1.Sell) - z(tx2.Buy)) < errorRange
+  return (
+    Math.abs(z(tx1.Buy ?? '-') - z(tx2.Sell ?? '-')) < errorRange &&
+    Math.abs(z(tx1.Sell ?? '-') - z(tx2.Buy ?? '-')) < errorRange
+  )
 }
 
 // checks if two transactions are a Deposit/Withdrawal match
-const match = (tx1, tx2) =>
+const match = (tx1: CoinTrackingTrade, tx2: CoinTrackingTrade) =>
   tx1.Type === otherType(tx2.Type) && tx1.CurBuy === tx2.CurSell && tx1.CurSell === tx2.CurBuy && closeEnough(tx1, tx2)
 
 // memoized price
-const mPrice = memoize('price').async(async key => {
+const mPrice = memoize('price').async(async (key: string): Promise<number | string> => {
   const { from, to, time, exchange } = JSON.parse(key)
 
   if (from === to) return 1
@@ -64,20 +84,27 @@ const mPrice = memoize('price').async(async key => {
 
 // calculate the price of a currency in a countercurrency
 // stringify arguments into caching key for memoize
-const price = async (from, to, time, options) =>
-  options.mockprice != null
-    ? options.mockprice
-    : +(await mPrice(JSON.stringify({ from, to, time, exchange: options.exchange })))
+const price = async (
+  from: string | number,
+  to: string | number,
+  time: string,
+  options: { exchange?: string } = {},
+): Promise<number> => +(await mPrice(JSON.stringify({ from, to, time, exchange: options.exchange || 'cccagg' })))
 
-const isCryptoToUsd = trade =>
-  (trade.Type === 'Withdrawal' && trade.Exchange === 'Coinbase' && !trade.Fee && trade.Sell < 4) || // shift card (infer)
+const isCryptoToUsd = (trade: CoinTrackingTrade) =>
+  (trade.Type === 'Withdrawal' &&
+    trade.Exchange === 'Coinbase' &&
+    !trade.Fee &&
+    trade.Sell !== null &&
+    trade.Sell < 4) || // shift card (infer)
   (trade.Type === 'Trade' && trade.CurBuy === 'USD') ||
   trade.Type === 'Spend'
 
-const isUsdToCrypto = trade => trade.Type === 'Trade' && trade.CurSell === 'USD'
+const isUsdToCrypto = (trade: CoinTrackingTrade) => trade.Type === 'Trade' && trade.CurSell === 'USD'
 
 // find a withdrawal in the given list of transactions that matches the given deposit
-const findMatchingWithdrawal = (deposit, txs) => txs.find(tx => match(deposit, tx))
+const findMatchingWithdrawal = (deposit: CoinTrackingTrade, txs: CoinTrackingTrade[]) =>
+  txs.find(tx => match(deposit, tx))
 
 // convert airdropSymbols from array to object for O(1) lookup
 const airdropIndex = secure.airdropSymbols.reduce(
@@ -87,12 +114,15 @@ const airdropIndex = secure.airdropSymbols.reduce(
   }),
   {},
 )
-const isAirdrop = symbol => symbol.toLowerCase() in airdropIndex
+const isAirdrop = (symbol: string) => symbol.toLowerCase() in airdropIndex
 
 // group transactions into several broad categories
 // match same-day withdrawals and deposits
 // calculate custom cost basis
-const cryptogains = async (txs, options = {}) => {
+const cryptogains = async (
+  txs: CoinTrackingTrade[],
+  options: { accounting?: 'fifo' | 'lifo'; likekind?: boolean; verbose?: boolean } = {},
+) => {
   const matched = []
   const unmatched = []
   const income = []
@@ -113,9 +143,9 @@ const cryptogains = async (txs, options = {}) => {
     dateAcquired    // date the original asset was acquired
   }
   */
-  const sales = []
-  const interest = [] // loan interest earned must be reported differently than sales
-  const likeKindExchanges = []
+  const sales: Transaction[] = []
+  const interest: Loan[] = [] // loan interest earned must be reported differently than sales
+  const likeKindExchanges: Transaction[] = []
   const noAvailablePurchases = []
   const noMatchingWithdrawals = []
   const priceErrors = []
@@ -124,12 +154,28 @@ const cryptogains = async (txs, options = {}) => {
   const txsByDay = groupByDay(txs)
 
   // pushes price errors to priceErrors instead of throwing
-  const tryPrice = async (tx, ...args) => {
+  const tryPrice = async (
+    tx: CoinTrackingTrade,
+    from: string | number | undefined,
+    to: string | number | undefined,
+    time: string,
+    options?: Parameters<typeof price>[3],
+  ): Promise<number | undefined> => {
+    if (from == null) {
+      console.error('Missing from price')
+      priceErrors.push(tx)
+      return undefined
+    } else if (to == null) {
+      console.error('Missing from price')
+      priceErrors.push(tx)
+      return undefined
+    }
+
     let p
     try {
       // Poloniex market does not exist for some coin pairs
-      p = await price(...args)
-    } catch (e) {
+      p = await price(from, to, time, options)
+    } catch (e: any) {
       console.error(`Error fetching price`, e.message)
       priceErrors.push(tx)
     }
@@ -148,11 +194,11 @@ const cryptogains = async (txs, options = {}) => {
       // convert ICO's to Trade
       // the matching withdrawal of CurSell can be ignored since it does no affect cost basis
       const ico = secure.icos.find(
-        ico => +ico.Buy === +tx.Buy && ico.CurBuy === tx.CurBuy && ico.Date === tx['Trade Date'],
+        ico => tx.Buy !== null && +ico.Buy === +tx.Buy && ico.CurBuy === tx.CurBuy && ico.Date === tx['Trade Date'],
       )
       if (ico) {
         tx.Type = 'Trade'
-        tx.Sell = ico.Sell
+        tx.Sell = +ico.Sell
         tx.CurSell = ico.CurSell
         tx.Comment = 'ICO'
       }
@@ -160,8 +206,8 @@ const cryptogains = async (txs, options = {}) => {
       // LENDING
 
       // must go before Trade
-      if (/lending/i.test(tx['Trade Group'])) {
-        let p = tx.Price || (await tryPrice(tx, tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])), options))
+      if (/lending/i.test(tx['Trade Group'] ?? '')) {
+        let p = tx.Price || (await tryPrice(tx, tx.CurBuy, 'USD', day(normalDate(tx['Trade Date']))))
 
         // Cryptocompare returns erroneous prices for BTS on some days. When a price that is out of range is detected, set it to 0.2 which is a reasonable estimate for that time.
         // e.g. https://min-api.cryptocompare.com/data/pricehistorical?fsym=BTS&tsyms=USD&ts=1495756800
@@ -185,7 +231,7 @@ const cryptogains = async (txs, options = {}) => {
         1497312000 546.67
         1497916800 371.61
         */
-        if (tx.CurBuy === 'BTS' && p > 10) {
+        if (tx.CurBuy === 'BTS' && (p as any) > 10) {
           p = 0.2
         }
 
@@ -193,9 +239,9 @@ const cryptogains = async (txs, options = {}) => {
         // use buy because a USD sale "buys" a certain amount of USD, so buy - cost is the profit
         interest.push({
           date: tx['Trade Date'],
-          loanAmount: tx.Buy,
-          loanCurrency: tx.CurBuy,
-          interestEarnedUSD: tx.Buy * p,
+          loanAmount: tx.Buy!,
+          loanCurrency: tx.CurBuy!,
+          interestEarnedUSD: tx.Buy! * p!,
         })
       }
 
@@ -204,21 +250,19 @@ const cryptogains = async (txs, options = {}) => {
       // must go before isCryptoToUsd
       // some Bitfinex margin trades are reported as Lost
       // similar to Trade processing, but does not update stock
-      else if (/margin/i.test(tx['Trade Group']) || tx.Type === 'Lost') {
+      else if (/margin/i.test(tx['Trade Group'] ?? '') || tx.Type === 'Lost') {
         margin.push(tx)
 
         // handle '-' value
-        const buy = isNaN(tx.Buy ? 0 : +tx.Buy)
-        const sell = isNaN(tx.Sell ? 0 : +tx.Sell)
+        const buy = isNaN(tx.Buy ? 0 : +tx.Buy!)
+        const sell = isNaN(tx.Sell ? 0 : +tx.Sell!)
 
         let buyPrice, sellPrice
 
         try {
-          buyPrice = buy ? tx.Price || (await price(tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])), options)) : 0
-          sellPrice = sell
-            ? tx.Price || (await price(tx.CurSell, 'USD', day(normalDate(tx['Trade Date'])), options))
-            : 0
-        } catch (e) {
+          buyPrice = buy ? tx.Price || (await price(tx.CurBuy!, 'USD', day(normalDate(tx['Trade Date'])))) : 0
+          sellPrice = sell ? tx.Price || (await price(tx.CurSell!, 'USD', day(normalDate(tx['Trade Date'])))) : 0
+        } catch (e: any) {
           console.error(`Error fetching price`, e.message)
           priceErrors.push(tx)
         }
@@ -226,9 +270,9 @@ const cryptogains = async (txs, options = {}) => {
         // simulate USD Buy
         // use buy because a USD sale "buys" a certain amount of USD, so buy - cost is the profit
         sales.push({
-          buy: sell * sellPrice,
+          buy: +sell * +sellPrice!,
           buyCur: 'USD',
-          cost: buy * buyPrice,
+          cost: +buy * +buyPrice!,
           // count as short-term gains
           date: tx['Trade Date'],
           dateAcquired: tx['Trade Date'],
@@ -248,11 +292,13 @@ const cryptogains = async (txs, options = {}) => {
           if (tx.Type === 'Trade') {
             sales.push(
               ...stock.trade({
-                sell: +tx.Sell,
+                isLikekind: undefined,
+                sell: +tx.Sell!,
                 sellCur: tx.CurSell,
-                buy: +tx.Buy,
+                buy: +tx.Buy!,
                 buyCur: 'USD',
                 date: tx['Trade Date'],
+                price: undefined,
                 type: options.accounting,
               }),
             )
@@ -263,21 +309,23 @@ const cryptogains = async (txs, options = {}) => {
               tx.Price ||
               (await tryPrice(tx, tx.CurSell, 'USD', day(normalDate(tx['Trade Date'])), {
                 ...options,
-                exchange: tx.Exchange,
+                exchange: tx.Exchange as any,
               })) ||
               0
             sales.push(
               ...stock.trade({
-                sell: +tx.Sell,
+                isLikekind: undefined,
+                sell: +tx.Sell!,
                 sellCur: tx.CurSell,
-                buy: tx.Sell * p,
+                buy: tx.Sell! * +p!,
                 buyCur: 'USD',
                 date: tx['Trade Date'],
+                price: undefined,
                 type: options.accounting,
               }),
             )
           }
-        } catch (e) {
+        } catch (e: any) {
           if (e instanceof Stock.NoAvailablePurchaseError) {
             if (options.verbose) {
               console.error('Error making trade', e.message)
@@ -295,7 +343,7 @@ const cryptogains = async (txs, options = {}) => {
       // must go before crypto-to-crypto trade
       else if (isUsdToCrypto(tx)) {
         usdToCrypto.push(tx)
-        stock.deposit(+tx.Buy, tx.CurBuy, +tx.Sell, tx['Trade Date'])
+        stock.deposit(+tx.Buy!, tx.CurBuy, +tx.Sell!, tx['Trade Date'])
       }
 
       // TRADE
@@ -306,7 +354,7 @@ const cryptogains = async (txs, options = {}) => {
         tradeTxs.push(tx)
 
         // fetch price of buy currency
-        const p = tx.Price || (await tryPrice(tx, tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])), options))
+        const p = tx.Price || (await tryPrice(tx, tx.CurBuy, 'USD', day(normalDate(tx['Trade Date']))))
 
         // A zero price could cause problems
         // Luckily it seems quite rare
@@ -319,9 +367,9 @@ const cryptogains = async (txs, options = {}) => {
           const isLikekind = options.likekind && new Date(normalDate(tx['Trade Date'])).getFullYear() < 2018
           const trades = stock.trade({
             isLikekind,
-            sell: +tx.Sell,
+            sell: +tx.Sell!,
             sellCur: tx.CurSell,
-            buy: +tx.Buy,
+            buy: +tx.Buy!,
             buyCur: tx.CurBuy,
             date: tx['Trade Date'],
             price: p,
@@ -329,7 +377,7 @@ const cryptogains = async (txs, options = {}) => {
           })
 
           ;(isLikekind ? likeKindExchanges : sales).push(...trades)
-        } catch (e) {
+        } catch (e: any) {
           if (e instanceof Stock.NoAvailablePurchaseError) {
             if (options.verbose) {
               console.error('Error making trade:', e.message)
@@ -346,9 +394,9 @@ const cryptogains = async (txs, options = {}) => {
         income.push(tx)
 
         // update cost basis
-        const p = tx.Price || (await tryPrice(tx, tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])), options)) || 0
+        const p = tx.Price || (await tryPrice(tx, tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])))) || 0
 
-        stock.deposit(+tx.Buy, tx.CurBuy, tx.Buy * p, tx['Trade Date'])
+        stock.deposit(+tx.Buy!, tx.CurBuy, tx.Buy! * p, tx['Trade Date'])
       }
 
       // DEPOSIT
@@ -356,12 +404,12 @@ const cryptogains = async (txs, options = {}) => {
         // USD deposits have as-is cost basis
         if (tx.CurBuy === 'USD') {
           usdDeposits.push(tx)
-          stock.deposit(+tx.Buy, 'USD', +tx.Buy, tx['Trade Date'])
+          stock.deposit(+tx.Buy!, 'USD', +tx.Buy!, tx['Trade Date'])
         }
         // air drops have cost basis of 0
-        else if (isAirdrop(tx.CurBuy)) {
+        else if (isAirdrop(tx.CurBuy!)) {
           airdrops.push(tx)
-          stock.deposit(+tx.Buy, tx.CurBuy, 0, tx['Trade Date'])
+          stock.deposit(+tx.Buy!, tx.CurBuy, 0, tx['Trade Date'])
         }
         // try to match the deposit to a same-day withdrawal
         else if (findMatchingWithdrawal(tx, group)) {
@@ -370,7 +418,7 @@ const cryptogains = async (txs, options = {}) => {
         // SALT presale
         else if (tx.CurBuy === 'SALT' && tx['Trade Date'].includes('2017')) {
           matched.push(tx)
-          stock.deposit(+tx.Buy, tx.CurBuy, tx.Buy * 0.25, tx['Trade Date'])
+          stock.deposit(+tx.Buy!, tx.CurBuy, tx.Buy! * 0.25, tx['Trade Date'])
         }
         // Forks: BCH, ETC
         else if (
@@ -378,12 +426,12 @@ const cryptogains = async (txs, options = {}) => {
           (tx.CurBuy === 'ETC' && tx['Trade Date'].includes('2016'))
         ) {
           matched.push(tx)
-          stock.deposit(+tx.Buy, tx.CurBuy, 0, tx['Trade Date'])
+          stock.deposit(+tx.Buy!, tx.CurBuy, 0, tx['Trade Date'])
         }
         // otherwise we have an unmatched transaction and need to fallback to the day-of price
         // and add it to the stock
         else {
-          const p = tx.Price || (await tryPrice(tx, tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])), options))
+          const p = tx.Price || (await tryPrice(tx, tx.CurBuy, 'USD', day(normalDate(tx['Trade Date']))))
 
           // do not report missing USDT purchases as warnings, since the cost basis is invariant
           if (tx.CurBuy === 'USDT') {
@@ -405,7 +453,7 @@ const cryptogains = async (txs, options = {}) => {
             unmatched.push(newTx)
           }
 
-          stock.deposit(+tx.Buy, tx.CurBuy, tx.Buy * p, tx['Trade Date'])
+          stock.deposit(+tx.Buy!, tx.CurBuy, tx.Buy! * p!, tx['Trade Date'])
         }
       }
 
