@@ -2,13 +2,12 @@ import chalk from 'chalk'
 import fs from 'fs'
 import json2csv from 'json2csv'
 import mkdir from 'make-dir'
+import yargs from 'yargs/yargs'
 import Loan from './@types/Loan.js'
 import Transaction from './@types/Transaction.js'
 import TransactionWithGain from './@types/TransactionWithGain.js'
 import cryptogains from './cryptogains.js'
 import loadTrades from './loadTrades.js'
-
-const yargs = require('yargs')
 
 // convert trades array to CSV and restore header
 const toCSV = (trades: unknown[], fields: { value: string; label: string }[]): string => {
@@ -46,14 +45,14 @@ const sum = (x: number, y: number): number => x + y
  * RUN
  *****************************************************************/
 
-const argv = yargs
+const argv = await yargs(process.argv.slice(2))
   .usage('Usage: $0 <file or directory> [options]')
   .demandCommand(1)
   .option('accounting', { default: 'fifo', describe: 'Accounting type: fifo/lifo.' })
   .option('exchange', { default: 'cccagg', describe: 'Exchange for price lookups.' })
   .option('likekind', { default: true, describe: 'Allow like-kind exchange before 2018.' })
   .option('limit', { default: Infinity, describe: 'Limit number of transactions processed.' })
-  .option('mockprice', { describe: 'Mock price in place of cryptocompare lookups.' })
+  .option('mockprice', { describe: 'Mock price in place of cryptocompare lookups.', type: 'number' })
   .option('output', { describe: 'Output directory for results.' })
   .option('verbose', { describe: 'Show more errors and warnings.' }).argv
 
@@ -162,7 +161,7 @@ const argv = yargs
   }
 
   // load transactions from a csv or directory of csv files
-  const txs = await loadTrades(argv._[0], argv.limit)
+  const txs = await loadTrades(argv._[0] as string, argv.limit)
 
   const {
     matched,
@@ -182,7 +181,12 @@ const argv = yargs
     noMatchingWithdrawals,
     priceErrors,
     zeroPrices,
-  } = await cryptogains(txs, argv)
+  } = await cryptogains(txs, {
+    ...argv,
+    // narrow option types that yargs types too generically
+    accounting: argv.accounting as 'fifo' | 'lifo' | undefined,
+    verbose: !!argv.verbose,
+  })
 
   // sale.buy is the USD acquired from the trade ("buy" USD)
   // sale.cost is the cost basis

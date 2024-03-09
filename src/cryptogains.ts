@@ -122,7 +122,13 @@ const isAirdrop = (symbol: string) => symbol.toLowerCase() in airdropIndex
 // calculate custom cost basis
 const cryptogains = async (
   txs: CoinTrackingTrade[],
-  options: { accounting?: 'fifo' | 'lifo'; likekind?: boolean; verbose?: boolean } = {},
+  options: {
+    accounting?: 'fifo' | 'lifo'
+    exchange?: string
+    likekind?: boolean
+    mockprice?: number
+    verbose?: boolean
+  } = {},
 ) => {
   const matched = []
   const unmatched = []
