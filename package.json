@@ -18,10 +18,10 @@
   "dependencies": {
     "chalk": "^5.3.0",
     "csvtojson": "^2.0.10",
-    "got": "^14.0.0",
     "json2csv": "^5.0.7",
     "make-dir": "^4.0.0",
     "nano-persistent-memoizer": "^0.1.2",
+    "node-fetch": "^3.3.2",
     "progress": "^2.0.3",
     "yargs": "^17.7.2"
   },

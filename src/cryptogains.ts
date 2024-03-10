@@ -1,6 +1,6 @@
 import fs from 'fs/promises'
-import got from 'got'
 import memoize from 'nano-persistent-memoizer'
+import fetch from 'node-fetch'
 import CoinTrackingTrade from './@types/CoinTrackingTrade.js'
 import Loan from './@types/Loan.js'
 import Ticker from './@types/Ticker.js'
@@ -69,7 +69,8 @@ const mPrice = memoize('price').async(async (key: string): Promise<number | stri
   const url = `https://min-api.cryptocompare.com/data/pricehistorical?fsym=${from}&tsyms=${to}&ts=${
     new Date(time).getTime() / 1000
   }&e=${exchange}&api_key=${secure.cryptoCompareApiKey}&calculationType=MidHighLow&extraParams=cost-basis-filler`
-  const data = JSON.parse((await got(url)).body)
+  const response = await fetch(url)
+  const data = (await response.json()) as any
 
   if (data[from]) {
     return data[from][to]
