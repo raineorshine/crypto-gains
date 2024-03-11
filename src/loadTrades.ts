@@ -7,6 +7,7 @@ import GeminiTrade from './@types/GeminiTrade.js'
 import KrakenTrade from './@types/KrakenTrade.js'
 import Ticker from './@types/Ticker.js'
 import nonNull from './nonNull.js'
+import normalDate from './normalDate.js'
 
 // Corresponding type: CoinTrackingTrade
 const cointrackingColumns: (keyof CoinTrackingTrade | 'Cur.')[] = [
@@ -241,9 +242,12 @@ const loadTradeHistoryFile = async (file: string | null): Promise<CoinTrackingTr
 
 /** Loads all trades from a file or directory. */
 const loadTrades = async (inputPath: string, limit?: number): Promise<CoinTrackingTrade[]> => {
+  let inputPaths: string[] = []
+
+  // dir
   if (isDir(inputPath)) {
     console.info('\nInput files:')
-    const tradeGroups = await Promise.all(
+    inputPaths = await Promise.all(
       fs
         .readdirSync(inputPath)
         .sort()
@@ -253,14 +257,26 @@ const loadTrades = async (inputPath: string, limit?: number): Promise<CoinTracki
           console.info(`  ${file}`)
           return fullPath
         })
-        .filter(nonNull)
-        .map(loadTradeHistoryFile),
+        .filter(nonNull),
     )
-    return tradeGroups.flat().slice(0, limit)
-  } else {
-    const txs = await loadTradeHistoryFile(inputPath)
-    return txs.slice(0, limit)
   }
+  // file
+  else {
+    inputPaths = [inputPath]
+  }
+
+  // load trades from each file and flatten into a single list
+  const tradesByFile = await Promise.all(inputPaths.map(loadTradeHistoryFile))
+  const trades = tradesByFile.flat()
+
+  // return trades sorted by date
+  return trades
+    .sort((a, b) => {
+      const dateA = new Date(normalDate(a['Trade Date']))
+      const dateB = new Date(normalDate(b['Trade Date']))
+      return dateA === dateB ? 0 : dateA < dateB ? -1 : 1
+    })
+    .slice(0, limit)
 }
 
 export default loadTrades

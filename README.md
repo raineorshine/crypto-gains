@@ -10,7 +10,6 @@ Historical prices provided by the [cryptocompare API](https://min-api.cryptocomp
 
 - Reads a csv file of transactions (or a directory of csv files)
   - Supports the trade history export format from [CoinTracking](https://cointracking.info/trades.php) or [Kraken](https://www.kraken.com/u/history/export).
-  - Transactions must be sorted by trade date (oldest to newest).
   - See [sample-data.csv](https://github.com/raineorshine/cost-basis-filler/blob/master/sample-data.csv) for a sample CoinTracking trade history file.
 - Outputs csv with gains for each year
   - `,Type,Buy,Cur.,Sell,Cur.,Exchange,Trade Group,Comment,Trade Date`

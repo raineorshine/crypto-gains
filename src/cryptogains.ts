@@ -5,6 +5,7 @@ import CoinTrackingTrade from './@types/CoinTrackingTrade.js'
 import Loan from './@types/Loan.js'
 import Ticker from './@types/Ticker.js'
 import Transaction from './@types/Transaction.js'
+import normalDate from './normalDate.js'
 import Stock from './stock.js'
 
 const secure = JSON.parse(await fs.readFile(new URL('../data/secure.json', import.meta.url), 'utf-8')) as {
@@ -34,11 +35,8 @@ const groupByDay = (trades: CoinTrackingTrade[]) => {
   return txsByDay
 }
 
-// get the day of the date
+// get the day of the normalized date string
 const day = (date: string) => date.split(' ')[0]
-
-// convert d-m-y date (e.g. 18.06.2016 15:14 0) to y-m-d
-const normalDate = (d: string) => `${d.slice(6, 10)}-${d.slice(3, 5)}-${d.slice(0, 2)} ${d.slice(11)}`
 
 // get the opposite tx type: Deposit/Withdrawal
 // TODO: What if type is not a Deposit or a Withdrawal?
