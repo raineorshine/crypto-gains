@@ -6,7 +6,15 @@ interface CoinTrackingTrade {
   CurSell?: string
   Exchange: string
   Fee?: string
-  'Trade Group'?: string
+  'Trade Group'?:
+    | 'Bitfinex Margin'
+    | 'Borrowed'
+    | 'Exchange'
+    | 'Kraken Ledger'
+    | 'Kraken Margin'
+    | 'Kraken Rollover'
+    | 'Lending'
+    | 'Margin'
   Comment?: string
   // dd.mm.yyyy hh:mm
   'Trade Date': string
