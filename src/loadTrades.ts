@@ -195,7 +195,7 @@ const geminiTradeToCointracking = (trade: GeminiTrade): CoinTrackingTrade | null
   }
 }
 
-/** Loads a trade history file in Cointracking or Kraken format. */
+/** Loads a trade history file in Cointracking, Kraken, or Gemini format. */
 const loadTradeHistoryFile = async (file: string | null): Promise<CoinTrackingTrade[]> => {
   if (!file) return []
   const text = fs.readFileSync(file, 'utf-8')
