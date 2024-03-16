@@ -6,6 +6,7 @@ import CoinTrackingTrade from './@types/CoinTrackingTrade.js'
 import GeminiTrade from './@types/GeminiTrade.js'
 import KrakenTrade from './@types/KrakenTrade.js'
 import Ticker from './@types/Ticker.js'
+import UniswapTrade from './@types/UniswapTrade.js'
 import nonNull from './nonNull.js'
 import normalDate from './normalDate.js'
 
@@ -195,49 +196,94 @@ const geminiTradeToCointracking = (trade: GeminiTrade): CoinTrackingTrade | null
   }
 }
 
-/** Loads a trade history file in Cointracking, Kraken, or Gemini format. */
+/** Converts a trade in the Uniswap schema to the Cointracking schema. */
+const uniswapTradeToCointracking = (trade: UniswapTrade): CoinTrackingTrade | null => {
+  if (trade.type !== 'exchange') {
+    throw new Error('Unrecognized Uniswap trade type: ' + trade.type)
+  }
+
+  const buyAmount = parseFloat(trade.to.amount || '0')
+  const sellAmount = parseFloat(trade.from.amount || '0')
+  const date = new Date(trade.date)
+
+  const days = date.getDate().toString().padStart(2, '0')
+  const month = (date.getMonth() + 1).toString().padStart(2, '0')
+  const year = date.getFullYear()
+  const hours = date.getHours().toString().padStart(2, '0')
+  const minutes = date.getMinutes().toString().padStart(2, '0')
+
+  return {
+    Type: 'Trade',
+    Buy: buyAmount,
+    CurBuy: trade.to.currency.symbol,
+    Sell: sellAmount,
+    CurSell: trade.from.currency.symbol,
+    Exchange: 'Uniswap',
+    'Trade Date': `${days}.${month}.${year} ${hours}:${minutes}`,
+    Price: sellAmount / buyAmount,
+  }
+}
+
+/** Loads a trade history file in one of the supported formats. */
 const loadTradeHistoryFile = async (file: string | null): Promise<CoinTrackingTrade[]> => {
   if (!file) return []
   const text = fs.readFileSync(file, 'utf-8')
-  const headerColumns = text
-    .split('\n')[0]
-    .split(',')
-    .map(col => col.replace(/["\r]/g, ''))
+  const ext = path.extname(file).toLowerCase()
 
-  // CoinTracking
-  if (cointrackingColumns.every(col => headerColumns.includes(col))) {
-    return (await csvtojson().fromString(fixCointrackingHeader(text))) as CoinTrackingTrade[]
+  // json
+  // Uniswap is the only supported json format
+  switch (ext) {
+    case '.json': {
+      const uniswapTrades = JSON.parse(text) as UniswapTrade[]
+      const trades = uniswapTrades.map(uniswapTradeToCointracking).filter(nonNull)
+      return trades
+    }
+    case '.csv':
+      {
+        const headerColumns = text
+          .split('\n')[0]
+          .split(',')
+          .map(col => col.replace(/["\r]/g, ''))
+
+        // CoinTracking
+        if (cointrackingColumns.every(col => headerColumns.includes(col))) {
+          return (await csvtojson().fromString(fixCointrackingHeader(text))) as CoinTrackingTrade[]
+        }
+        // Gemini
+        else if (geminiColumns.every(col => headerColumns.includes(col))) {
+          const geminiTrades = (await csvtojson().fromString(text)) as GeminiTrade[]
+          return geminiTrades.map(geminiTradeToCointracking).filter(nonNull)
+        }
+        // Kraken
+        else if (krakenColumns.every(col => headerColumns.includes(col))) {
+          const krakenTrades = (await csvtojson().fromString(text)) as KrakenTrade[]
+          return krakenTrades
+            .map(row => {
+              const trade = krakenTradeToCointracking(row)
+              return [
+                trade,
+                // assume that funds are immediately withdrawn after a sale so that they are removed from the stock
+                trade && row.type === 'sell'
+                  ? ({
+                      ...trade,
+                      Type: 'Withdrawal' as const,
+                      Buy: null,
+                      BuyCur: null,
+                    } as CoinTrackingTrade)
+                  : null,
+              ]
+            })
+            .flat()
+            .filter(nonNull)
+        }
+      }
+      break
+
+    default:
+      throw new Error('Unrecognized file type: ' + file)
   }
-  // Gemini
-  else if (geminiColumns.every(col => headerColumns.includes(col))) {
-    const geminiTrades = (await csvtojson().fromString(text)) as GeminiTrade[]
-    return geminiTrades.map(geminiTradeToCointracking).filter(nonNull)
-  }
-  // Kraken
-  else if (krakenColumns.every(col => headerColumns.includes(col))) {
-    const krakenTrades = (await csvtojson().fromString(text)) as KrakenTrade[]
-    return krakenTrades
-      .map(row => {
-        const trade = krakenTradeToCointracking(row)
-        return [
-          trade,
-          // assume that funds are immediately withdrawn after a sale so that they are removed from the stock
-          trade && row.type === 'sell'
-            ? ({
-                ...trade,
-                Type: 'Withdrawal' as const,
-                Buy: null,
-                BuyCur: null,
-              } as CoinTrackingTrade)
-            : null,
-        ]
-      })
-      .flat()
-      .filter(nonNull)
-  } else {
-    error('Unrecognized file header:', headerColumns)
-    return []
-  }
+
+  return []
 }
 
 /** Loads all trades from a file or directory. */
