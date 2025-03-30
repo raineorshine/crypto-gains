@@ -1,4 +1,3 @@
-import { error } from 'console'
 import csvtojson from 'csvtojson'
 import fs from 'fs'
 import path from 'path'
@@ -7,6 +6,7 @@ import GeminiTrade from './@types/GeminiTrade.js'
 import KrakenTrade from './@types/KrakenTrade.js'
 import Ticker from './@types/Ticker.js'
 import UniswapTrade from './@types/UniswapTrade.js'
+import error from './error.js'
 import nonNull from './nonNull.js'
 import normalDate from './normalDate.js'
 
