@@ -146,7 +146,7 @@ const krakenTradeToCointracking = (trade: KrakenTrade): CoinTrackingTrade | null
 /** Converts a trade in the Gemini schema to the Cointracking schema. */
 const geminiTradeToCointracking = (trade: GeminiTrade): CoinTrackingTrade | null => {
   if (!pairMap.has(trade.Symbol)) {
-    error(`\nUnrecognized trading pair: "${trade.Symbol}"`, { trade })
+    error(`\nUnrecognized trading pair: { ..., "Symbol": "${trade.Symbol}" }`, { trade })
   }
   const { from, to } = pair(trade.Symbol)
   // ignore USDC/GUSD -> USD trades
@@ -173,20 +173,21 @@ const geminiTradeToCointracking = (trade: GeminiTrade): CoinTrackingTrade | null
   const buyAmount = parseFloat((buyAmountRaw || '0').replace(/[$(),]/g, ''))
   const price = cost / buyAmount
   const [year, month, day] = trade.Date.split('-')
+  const tradeType = !trade.Type && trade.Specification.includes('Credit Card Reward') ? 'Reward' : trade.Type
 
   return {
     Type:
-      trade.Type === 'Buy' || trade.Type === 'Sell'
+      tradeType === 'Buy' || tradeType === 'Sell'
         ? 'Trade'
-        : trade.Type === 'Credit'
+        : tradeType === 'Credit'
           ? 'Deposit'
-          : trade.Type === 'Debit'
+          : tradeType === 'Debit'
             ? 'Withdrawal'
-            : trade.Type,
-    Buy: trade.Type === 'Buy' || trade.Type === 'Credit' ? cost / price : cost,
-    CurBuy: trade.Type === 'Buy' || trade.Type === 'Credit' ? from : 'USD',
-    Sell: trade.Type === 'Sell' ? cost / price : cost,
-    CurSell: trade.Type === 'Sell' ? from : 'USD',
+            : tradeType,
+    Buy: tradeType === 'Buy' || tradeType === 'Credit' ? cost / price : cost,
+    CurBuy: tradeType === 'Buy' || tradeType === 'Credit' ? from : 'USD',
+    Sell: tradeType === 'Sell' ? cost / price : cost,
+    CurSell: tradeType === 'Sell' ? from : 'USD',
     Exchange: 'Gemini',
     'Trade Date': `${day}.${month}.${year} ${trade['Time (UTC)']}`,
     Price: price,

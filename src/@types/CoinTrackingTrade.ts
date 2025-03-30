@@ -1,5 +1,5 @@
 interface CoinTrackingTrade {
-  Type: 'Trade' | 'Deposit' | 'Withdrawal' | 'Spend' | 'Lost' | 'Income'
+  Type: 'Trade' | 'Deposit' | 'Withdrawal' | 'Spend' | 'Lost' | 'Income' | 'Reward'
   Buy: number | null
   CurBuy?: string
   Sell: number | null
