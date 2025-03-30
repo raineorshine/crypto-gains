@@ -6,7 +6,9 @@ import GeminiTrade from './@types/GeminiTrade.js'
 import KrakenTrade from './@types/KrakenTrade.js'
 import Ticker from './@types/Ticker.js'
 import UniswapTrade from './@types/UniswapTrade.js'
+import argv from './argv.js'
 import error from './error.js'
+import log from './log.js'
 import nonNull from './nonNull.js'
 import normalDate from './normalDate.js'
 
@@ -228,6 +230,7 @@ const uniswapTradeToCointracking = (trade: UniswapTrade): CoinTrackingTrade | nu
 const loadTradeHistoryFile = async (file: string | null): Promise<CoinTrackingTrade[]> => {
   if (!file) return []
   const text = fs.readFileSync(file, 'utf-8')
+  const filename = path.basename(file)
   const ext = path.extname(file).toLowerCase()
 
   // json
@@ -236,6 +239,7 @@ const loadTradeHistoryFile = async (file: string | null): Promise<CoinTrackingTr
     case '.json': {
       const uniswapTrades = JSON.parse(text) as UniswapTrade[]
       const trades = uniswapTrades.map(uniswapTradeToCointracking).filter(nonNull)
+      log.verbose(`  ${filename} [Uniswap]: ${trades.length} trades`)
       return trades
     }
     case '.xlsx':
@@ -250,17 +254,21 @@ const loadTradeHistoryFile = async (file: string | null): Promise<CoinTrackingTr
 
         // CoinTracking
         if (cointrackingColumns.every(col => headerColumns.includes(col))) {
-          return (await csvtojson().fromString(fixCointrackingHeader(text))) as CoinTrackingTrade[]
+          const trades = (await csvtojson().fromString(fixCointrackingHeader(text))) as CoinTrackingTrade[]
+          log.verbose(`  ${filename} [CoinTracking]: ${trades.length} trades`)
+          return trades
         }
         // Gemini
         else if (geminiColumns.every(col => headerColumns.includes(col))) {
           const geminiTrades = (await csvtojson().fromString(text)) as GeminiTrade[]
-          return geminiTrades.map(geminiTradeToCointracking).filter(nonNull)
+          const trades = geminiTrades.map(geminiTradeToCointracking).filter(nonNull)
+          log.verbose(`  ${filename} [Gemini]: ${trades.length} trades`)
+          return trades
         }
         // Kraken
         else if (krakenColumns.every(col => headerColumns.includes(col))) {
           const krakenTrades = (await csvtojson().fromString(text)) as KrakenTrade[]
-          return krakenTrades
+          const trades = krakenTrades
             .map(row => {
               const trade = krakenTradeToCointracking(row)
               return [
@@ -278,11 +286,14 @@ const loadTradeHistoryFile = async (file: string | null): Promise<CoinTrackingTr
             })
             .flat()
             .filter(nonNull)
+
+          log.verbose(`  ${filename} [Kraken]: ${trades.length} trades`)
+          return trades
         }
       }
       break
     default:
-      throw new Error('Unrecognized file type: ' + file)
+      error('Unrecognized file type: ' + file)
   }
 
   return []
@@ -294,7 +305,7 @@ const loadTrades = async (inputPath: string, limit?: number): Promise<CoinTracki
 
   // dir
   if (isDir(inputPath)) {
-    console.info('\nInput files:')
+    log('\nInput files:')
     inputPaths = await Promise.all(
       fs
         .readdirSync(inputPath)
@@ -306,7 +317,7 @@ const loadTrades = async (inputPath: string, limit?: number): Promise<CoinTracki
           if (ext === '.xlsx') {
             error(`  ${file}`)
           } else {
-            console.info(`  ${file}`)
+            log(`  ${file}`)
           }
           return fullPath
         })
@@ -319,8 +330,10 @@ const loadTrades = async (inputPath: string, limit?: number): Promise<CoinTracki
   }
 
   // load trades from each file and flatten into a single list
+  log.verbose('\nLoading trades...')
   const tradesByFile = await Promise.all(inputPaths.map(loadTradeHistoryFile))
   const trades = tradesByFile.flat()
+  log.verbose('')
 
   // return trades sorted by date
   return trades

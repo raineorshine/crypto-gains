@@ -2,12 +2,13 @@ import chalk from 'chalk'
 import fs from 'fs'
 import json2csv from 'json2csv'
 import mkdir from 'make-dir'
-import yargs from 'yargs/yargs'
 import Loan from './@types/Loan.js'
 import Transaction from './@types/Transaction.js'
 import TransactionWithGain from './@types/TransactionWithGain.js'
+import argv from './argv.js'
 import cryptogains from './cryptogains.js'
 import loadTrades from './loadTrades.js'
+import log from './log.js'
 
 // convert trades array to CSV and restore header
 const toCSV = (trades: unknown[], fields: { value: string; label: string }[]): string => {
@@ -45,15 +46,6 @@ const sum = (x: number, y: number): number => x + y
  * RUN
  *****************************************************************/
 
-const argv = await yargs(process.argv.slice(2))
-  .usage('Usage: $0 <input> [options]')
-  .demandCommand(1)
-  .option('accounting', { default: 'fifo', describe: 'Accounting type: fifo/lifo.' })
-  .option('likekind', { default: true, describe: 'Allow like-kind exchange before 2018.' })
-  .option('limit', { default: Infinity, describe: 'Limit number of transactions processed.' })
-  .option('output', { describe: 'Output directory for results.' })
-  .option('verbose', { describe: 'Show more errors and warnings.' }).argv
-
 ;(async () => {
   const outputByYear = async (
     year: string,
@@ -76,26 +68,26 @@ const argv = await yargs(process.argv.slice(2))
     // summary
     // cannot calculate unrealized gains from like-kind exchanges without fetching the price of tx.Buy and converting it to USD
     if (likeKindExchangesYear.length > 0) {
-      console.info(
+      log(
         `${year} Like-Kind Exchange Deferred Gains (${likeKindExchangesYear.length})`,
         formatPrice(likeKindExchangesYear.map(sale => sale.deferredGains || 0).reduce(sum, 0)),
       )
     }
-    console.info(
+    log(
       `${year} Short-Term Gains (${stSalesYear.length}):`,
       formatPrice(stSalesYear.map(sale => sale.gain).reduce(sum, 0)),
     )
-    console.info(
+    log(
       `${year} Long-Term Gains (${ltSalesYear.length}):`,
       formatPrice(ltSalesYear.map(sale => sale.gain).reduce(sum, 0)),
     )
     if (interestYear.length > 0) {
-      console.info(
+      log(
         `${year} Interest (${interestYear.length}):`,
         formatPrice(interestYear.map(tx => tx.interestEarnedUSD).reduce(sum, 0)),
       )
     }
-    console.info('')
+    log('')
 
     // output csv
     if (argv.output) {
@@ -183,7 +175,6 @@ const argv = await yargs(process.argv.slice(2))
     ...argv,
     // narrow option types that yargs types too generically
     accounting: argv.accounting as 'fifo' | 'lifo' | undefined,
-    verbose: !!argv.verbose,
   })
 
   // sale.buy is the USD acquired from the trade ("buy" USD)
@@ -202,27 +193,27 @@ const argv = await yargs(process.argv.slice(2))
     tradeTxs.length +
     margin.length +
     interest.length
-  console.info('')
-  console.info('Withdrawals:', withdrawals.length)
-  console.info('Matched Deposits:', matched.length)
-  console.info('Unmatched Deposits:', unmatched.length)
-  console.info('Crypto-to-USD:', cryptoToUsd.length)
-  console.info('USD-to-Crypto:', usdToCrypto.length)
-  console.info('USD Deposits:', usdDeposits.length)
-  console.info('Airdrops', airdrops.length)
-  console.info('Income:', income.length)
-  console.info('Trades:', tradeTxs.length)
-  console.info('Margin Trades:', margin.length)
-  console.info('Lending:', interest.length)
-  console.info(total === txs.length ? `TOTAL: ${total} ✓` : `✗ TOTAL: ${total}, TXS: ${txs.length}`)
-  console.info('')
+  log('')
+  log('Withdrawals:', withdrawals.length)
+  log('Matched Deposits:', matched.length)
+  log('Unmatched Deposits:', unmatched.length)
+  log('Crypto-to-USD:', cryptoToUsd.length)
+  log('USD-to-Crypto:', usdToCrypto.length)
+  log('USD Deposits:', usdDeposits.length)
+  log('Airdrops', airdrops.length)
+  log('Income:', income.length)
+  log('Trades:', tradeTxs.length)
+  log('Margin Trades:', margin.length)
+  log('Lending:', interest.length)
+  log(total === txs.length ? `TOTAL: ${total} ✓` : `✗ TOTAL: ${total}, TXS: ${txs.length}`)
+  log('')
 
-  console.info('ERRORS')
-  console.info('No available purchase:', noAvailablePurchases.length)
-  console.info('No matching withdrawals:', noMatchingWithdrawals.length)
-  console.info('Price errors:', priceErrors.length)
-  console.info('Zero prices:', zeroPrices.length)
-  console.info('')
+  log('ERRORS')
+  log('No available purchase:', noAvailablePurchases.length)
+  log('No matching withdrawals:', noMatchingWithdrawals.length)
+  log('Price errors:', priceErrors.length)
+  log('Zero prices:', zeroPrices.length)
+  log('')
 
   for (let y = 2016; y <= new Date().getFullYear(); y++) {
     outputByYear(y.toString(), salesWithGain, interest, likeKindExchanges)

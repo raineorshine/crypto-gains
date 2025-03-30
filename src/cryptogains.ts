@@ -5,6 +5,7 @@ import CoinTrackingTrade from './@types/CoinTrackingTrade.js'
 import Loan from './@types/Loan.js'
 import Ticker from './@types/Ticker.js'
 import Transaction from './@types/Transaction.js'
+import log from './log.js'
 import normalDate from './normalDate.js'
 import Stock from './stock.js'
 
@@ -123,7 +124,6 @@ const cryptogains = async (
   options: {
     accounting?: 'fifo' | 'lifo'
     likekind?: boolean
-    verbose?: boolean
   } = {},
 ) => {
   const matched = []
@@ -165,11 +165,11 @@ const cryptogains = async (
     options?: Parameters<typeof price>[3],
   ): Promise<number | undefined> => {
     if (from == null) {
-      console.error('Missing from price')
+      log.error('Missing from price')
       priceErrors.push(tx)
       return undefined
     } else if (to == null) {
-      console.error('Missing from price')
+      log.error('Missing from price')
       priceErrors.push(tx)
       return undefined
     }
@@ -179,7 +179,7 @@ const cryptogains = async (
       // Poloniex market does not exist for some coin pairs
       p = await price(from, to, time, options)
     } catch (e: any) {
-      console.error(`Error fetching price`, e.message)
+      log.error(`Error fetching price`, e.message)
       priceErrors.push(tx)
     }
 
@@ -266,7 +266,7 @@ const cryptogains = async (
           buyPrice = buy ? tx.Price || (await price(tx.CurBuy!, 'USD', day(normalDate(tx['Trade Date'])))) : 0
           sellPrice = sell ? tx.Price || (await price(tx.CurSell!, 'USD', day(normalDate(tx['Trade Date'])))) : 0
         } catch (e: any) {
-          console.error(`Error fetching price`, e.message)
+          log.error(`Error fetching price`, e.message)
           priceErrors.push(tx)
         }
 
@@ -329,9 +329,7 @@ const cryptogains = async (
           }
         } catch (e: any) {
           if (e instanceof Stock.NoAvailablePurchaseError) {
-            if (options.verbose) {
-              console.error('Error making trade', e.message)
-            }
+            log.verbose.error('Error making trade:', e.message)
             noAvailablePurchases.push(e)
           } else {
             throw e
@@ -381,9 +379,7 @@ const cryptogains = async (
           ;(isLikekind ? likeKindExchanges : sales).push(...trades)
         } catch (e: any) {
           if (e instanceof Stock.NoAvailablePurchaseError) {
-            if (options.verbose) {
-              console.error('Error making trade:', e.message)
-            }
+            log.verbose.error('Error making trade:', e.message)
             noAvailablePurchases.push(e)
           } else {
             throw e
@@ -440,9 +436,7 @@ const cryptogains = async (
             matched.push(tx)
           } else {
             const message = `WARNING: No matching withdrawal for deposit of ${tx.Buy} ${tx.CurBuy} on ${tx['Trade Date']}. Using historical price.`
-            if (options.verbose) {
-              console.warn(message)
-            }
+            log.verbose.warn(message)
             noMatchingWithdrawals.push(message)
 
             const newTx = {
