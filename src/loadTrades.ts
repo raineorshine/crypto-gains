@@ -95,7 +95,7 @@ const pairMap = new Map<string, { from?: Ticker; to?: Ticker }>([
   ['XXLMZUSD', { from: 'XLM', to: 'USD' } as const],
 ])
 
-/** Extracts the currency symbols from a Kraken trading pair. */
+/** Extracts the currency symbols from a trading pair. */
 const pair = (p: string): { from?: Ticker; to?: Ticker } => {
   const array = pairMap.get(p)
   if (!array) {
