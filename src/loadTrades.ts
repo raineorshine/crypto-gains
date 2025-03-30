@@ -6,11 +6,12 @@ import GeminiTrade from './@types/GeminiTrade.js'
 import KrakenTrade from './@types/KrakenTrade.js'
 import Ticker from './@types/Ticker.js'
 import UniswapTrade from './@types/UniswapTrade.js'
-import argv from './argv.js'
 import error from './error.js'
 import log from './log.js'
 import nonNull from './nonNull.js'
 import normalDate from './normalDate.js'
+
+const allowedCsvFormats = ['CoinTracking', 'Gemini', 'Kraken']
 
 // Corresponding type: CoinTrackingTrade
 const cointrackingColumns: (keyof CoinTrackingTrade | 'Cur.')[] = [
@@ -289,6 +290,13 @@ const loadTradeHistoryFile = async (file: string | null): Promise<CoinTrackingTr
 
           log.verbose(`  ${filename} [Kraken]: ${trades.length} trades`)
           return trades
+        } else {
+          error(
+            `Unrecognized format in CSV file: ${filename}. \nAllowed formats are: ${allowedCsvFormats.join(', ')}.\n`,
+            {
+              headerColumns,
+            },
+          )
         }
       }
       break
