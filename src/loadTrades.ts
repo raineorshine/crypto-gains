@@ -291,12 +291,33 @@ const loadTradeHistoryFile = async (file: string | null): Promise<CoinTrackingTr
           log.verbose(`  ${filename} [Kraken]: ${trades.length} trades`)
           return trades
         } else {
-          error(
+          const matchResults = allowedCsvFormats.map(format => {
+            const columns =
+              format === 'CoinTracking' ? cointrackingColumns : format === 'Gemini' ? geminiColumns : krakenColumns
+            const extra = headerColumns.filter(col => !columns.includes(col))
+            const matching = columns.filter(col => headerColumns.includes(col))
+            const missing = columns.filter(col => !headerColumns.includes(col))
+            return { extra, format, matching, missing, total: columns.length }
+          })
+
+          const closestMatch = matchResults.reduce((prev, curr) =>
+            curr.matching.length > prev.matching.length ? curr : prev,
+          )
+
+          log.error(
             `Unrecognized format in CSV file: ${filename}. \nAllowed formats are: ${allowedCsvFormats.join(', ')}.\n`,
             {
               headerColumns,
             },
           )
+          log.error(
+            `\nClosest csv format match: ${closestMatch.format} (${closestMatch.matching.length}/${closestMatch.total})\n`,
+          )
+          log(`Matching columns: \n${'  ' + closestMatch.matching.join('\n  ')}\n`)
+          log(`Missing columns: \n${'  ' + closestMatch.missing.join('\n  ')}\n`)
+          log(`Extra columns: \n${'  ' + closestMatch.extra.join('\n  ')}\n`)
+
+          process.exit(1)
         }
       }
       break
