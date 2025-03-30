@@ -83,6 +83,7 @@ const pairMap = new Map<string, TradingPair>([
   ['GUSD', {}],
   ['GUSDUSD', {}],
   ['USD', {}],
+  ['USDC', {}],
   ['USDCUSD', {}],
   ['USDTZUSD', {}],
   ['BTC', { from: 'BTC', to: 'USD' } as const],
@@ -97,11 +98,10 @@ const pairMap = new Map<string, TradingPair>([
 
 /** Extracts the currency symbols from a trading pair. */
 const pair = (p: string): TradingPair => {
-  const symbols = pairMap.get(p)
-  if (!symbols) {
+  if (!pairMap.has(p)) {
     error(`Unrecognized trading pair: ${p}`)
   }
-  return symbols!
+  return pairMap.get(p)!
 }
 
 /** Returns true if the given input path is a directory. */
@@ -120,6 +120,9 @@ const fixCointrackingHeader = (input: string): string => {
 
 /** Converts a trade in the Kraken schema to the Cointracking schema. */
 const krakenTradeToCointracking = (trade: KrakenTrade): CoinTrackingTrade | null => {
+  if (!pairMap.has(trade.pair)) {
+    error(`\nUnrecognized trading pair: "${trade.pair}"`, { trade })
+  }
   const { from, to } = pair(trade.pair)!
   // ignore USDC/GUSD -> USD trades
   if ((trade.type === 'buy' || trade.type === 'sell') && !from && !to) return null
@@ -142,6 +145,9 @@ const krakenTradeToCointracking = (trade: KrakenTrade): CoinTrackingTrade | null
 
 /** Converts a trade in the Gemini schema to the Cointracking schema. */
 const geminiTradeToCointracking = (trade: GeminiTrade): CoinTrackingTrade | null => {
+  if (!pairMap.has(trade.Symbol)) {
+    error(`\nUnrecognized trading pair: "${trade.Symbol}"`, { trade })
+  }
   const { from, to } = pair(trade.Symbol)
   // ignore USDC/GUSD -> USD trades
   if (
