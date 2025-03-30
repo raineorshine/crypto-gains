@@ -238,6 +238,9 @@ const loadTradeHistoryFile = async (file: string | null): Promise<CoinTrackingTr
       const trades = uniswapTrades.map(uniswapTradeToCointracking).filter(nonNull)
       return trades
     }
+    case '.xlsx':
+      error(`\n.xlsx files are not supported. Convert to .csv and delete .xlsx before proceeding.`)
+      break
     case '.csv':
       {
         const headerColumns = text
@@ -278,7 +281,6 @@ const loadTradeHistoryFile = async (file: string | null): Promise<CoinTrackingTr
         }
       }
       break
-
     default:
       throw new Error('Unrecognized file type: ' + file)
   }
@@ -300,7 +302,12 @@ const loadTrades = async (inputPath: string, limit?: number): Promise<CoinTracki
         .map(file => {
           const fullPath = path.resolve(inputPath, file)
           if (isDir(fullPath) || ignoreTradeFile(file)) return null
-          console.info(`  ${file}`)
+          const ext = path.extname(file).toLowerCase()
+          if (ext === '.xlsx') {
+            error(`  ${file}`)
+          } else {
+            console.info(`  ${file}`)
+          }
           return fullPath
         })
         .filter(nonNull),
