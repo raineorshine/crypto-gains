@@ -4,7 +4,7 @@ import path from 'path'
 import CoinTrackingTrade from './@types/CoinTrackingTrade.js'
 import GeminiTrade from './@types/GeminiTrade.js'
 import KrakenTrade from './@types/KrakenTrade.js'
-import Ticker from './@types/Ticker.js'
+import TradingPair from './@types/TradingPair.js'
 import UniswapTrade from './@types/UniswapTrade.js'
 import error from './error.js'
 import log from './log.js'
@@ -70,7 +70,7 @@ const krakenColumns = [
   'ledgers',
 ]
 
-const pairMap = new Map<string, { from?: Ticker; to?: Ticker }>([
+const pairMap = new Map<string, TradingPair>([
   ['BATUSD', { from: 'BAT', to: 'USD' } as const],
   ['AVAXUSD', { from: 'AVAX', to: 'USD' } as const],
   ['DAIUSD', { from: 'DAI', to: 'USD' } as const],
@@ -96,12 +96,12 @@ const pairMap = new Map<string, { from?: Ticker; to?: Ticker }>([
 ])
 
 /** Extracts the currency symbols from a trading pair. */
-const pair = (p: string): { from?: Ticker; to?: Ticker } => {
-  const array = pairMap.get(p)
-  if (!array) {
+const pair = (p: string): TradingPair => {
+  const symbols = pairMap.get(p)
+  if (!symbols) {
     error(`Unrecognized trading pair: ${p}`)
   }
-  return array!
+  return symbols!
 }
 
 /** Returns true if the given input path is a directory. */
