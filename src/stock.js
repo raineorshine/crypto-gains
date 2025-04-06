@@ -12,7 +12,13 @@ const Stock = () => {
   const balance = cur => lots.filter(lot => lot.cur === cur).reduce((prev, item) => prev + item.amount, 0)
   const next = (cur, type = 'fifo') => (type === 'fifo' ? lots : lots.slice().reverse()).find(lot => lot.cur === cur)
   const remove = lot => lots.splice(lots.indexOf(lot), 1)
-  const deposit = (amount, cur, cost, date) => lots.push({ amount, cur, cost, date })
+  const deposit = (amount, cur, cost, date) => {
+    if (isNaN(amount) || isNaN(cost)) {
+      console.error({ amount, cur, cost, date })
+      throw new Error('deposit: NaN encountered')
+    }
+    lots.push({ amount, cur, cost, date })
+  }
 
   // assume withdraw is not a sale; maintain cost basis
   // validates available purchases
@@ -143,6 +149,13 @@ const Stock = () => {
         // we don't need to add old lot's deferred gains since costPartial still represents the original cost basis of the like-kind exchange
         deferredGains: isLikekind ? costPartialNew - costPartial : 0,
         date: lot && isLikekind ? lot.date : date,
+      }
+
+      if (isNaN(lotNew.amount) || isNaN(lotNew.cost) || isNaN(buyPartial) || isNaN(sellPartial)) {
+        console.error('args', { sell, sellCur, buy, buyCur, date, price, isLikekind, type })
+        console.error('lot', lot)
+        console.error({ buy, sell, buyPartial, sellPartial, costPartial, costPartialNew })
+        throw new Error('trade: NaN encountered')
       }
 
       // do not store new lot for crypto sale to USD
