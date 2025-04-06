@@ -83,6 +83,7 @@ const pairMap = new Map<string, TradingPair>([
   ['GUSD', {}],
   ['GUSDUSD', {}],
   ['USD', {}],
+  ['USDC', {}],
   ['USDCUSD', {}],
   ['USDTZUSD', {}],
   ['BTC', { from: 'BTC', to: 'USD' } as const],
@@ -151,7 +152,7 @@ const geminiTradeToCointracking = (trade: GeminiTrade): CoinTrackingTrade | null
   if (
     trade.Specification.includes('Gemini Credit Card Reward Payout') ||
     trade.Symbol === 'USD' ||
-    ((trade.Type === 'Buy' || trade.Type === 'Sell') && !from && !to)
+    ((trade.Type === 'Buy' || trade.Type === 'Sell' || trade.Type === 'Credit') && !from && !to)
   )
     return null
 
