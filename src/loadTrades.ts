@@ -142,7 +142,11 @@ const krakenTradeToCointracking = (trade: KrakenTrade): CoinTrackingTrade | null
 
 /** Converts a trade in the Gemini schema to the Cointracking schema. */
 const geminiTradeToCointracking = (trade: GeminiTrade): CoinTrackingTrade | null => {
+  // xlsx file comes with an empty totals row that should be ignored
+  if (!trade.Date && !trade.Type && !trade.Specification) return null
+
   const { from, to } = pair(trade.Symbol)
+
   // ignore USDC/GUSD -> USD trades
   if (
     trade.Specification.includes('Gemini Credit Card Reward Payout') ||
