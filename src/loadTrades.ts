@@ -173,12 +173,18 @@ const geminiTradeToCointracking = (trade: GeminiTrade): CoinTrackingTrade | null
 
   const cost = parseFloat((costRaw || '0').replace(/[$(),]/g, ''))
   const buyAmount = parseFloat((buyAmountRaw || '0').replace(/[$(),]/g, ''))
-  const price = cost / buyAmount
+  const price = trade.Type === 'Debit' && buyAmount === 0 ? 0 : cost / buyAmount
   const [year, month, day] = trade.Date.split('-')
 
-  if (isNaN(price)) {
-    error({ trade, price, buyAmount, cost })
-    throw new Error('geminiTradeToCointracking: NaN price')
+  // price is required for Buy/Sell/Credit so that we calculate the correct cost basis
+  // if ((trade.Type === 'Buy' || trade.Type === 'Sell' || trade.Type === 'Credit') && !price) {
+  if (trade.Type === 'Sell' && cost === 0 && buyAmount < 1) {
+    if (buyAmount > 1) {
+      error(
+        `Sometimes Gemini can return a zero cost on a Sell. As long as it is miniscule, this trade can be safely ignored. However, this trade has a buyAmount of ${buyAmount}, so it should be investigated.`,
+      )
+    }
+    return null
   }
 
   return {
