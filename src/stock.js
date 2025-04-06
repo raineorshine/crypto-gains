@@ -16,6 +16,9 @@ const Stock = () => {
     if (isNaN(amount) || isNaN(cost)) {
       console.error({ amount, cur, cost, date })
       throw new Error('deposit: NaN encountered')
+    } else if (amount <= 0) {
+      console.error({ amount, cur, cost, date })
+      throw new Error('deposit: Amount must be positive')
     }
     lots.push({ amount, cur, cost, date })
   }
