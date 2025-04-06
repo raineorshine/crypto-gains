@@ -149,10 +149,13 @@ const geminiTradeToCointracking = (trade: GeminiTrade): CoinTrackingTrade | null
   const { from, to } = pair(trade.Symbol)
 
   // ignore USDC/GUSD -> USD trades
+  // ignore USDC Credit/Debit (i.e. Deposit/Widhtdrawal)
   if (
     trade.Specification.includes('Gemini Credit Card Reward Payout') ||
     trade.Symbol === 'USD' ||
-    ((trade.Type === 'Buy' || trade.Type === 'Sell' || trade.Type === 'Credit') && !from && !to)
+    ((trade.Type === 'Buy' || trade.Type === 'Sell' || trade.Type === 'Debit' || trade.Type === 'Credit') &&
+      !from &&
+      !to)
   )
     return null
 
@@ -172,6 +175,11 @@ const geminiTradeToCointracking = (trade: GeminiTrade): CoinTrackingTrade | null
   const buyAmount = parseFloat((buyAmountRaw || '0').replace(/[$(),]/g, ''))
   const price = cost / buyAmount
   const [year, month, day] = trade.Date.split('-')
+
+  if (isNaN(price)) {
+    error({ trade, price, buyAmount, cost })
+    throw new Error('geminiTradeToCointracking: NaN price')
+  }
 
   return {
     Type:
