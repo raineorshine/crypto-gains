@@ -70,6 +70,7 @@ const krakenColumns = [
   'ledgers',
 ]
 
+/** Extracts the from/to pair of currencies from a given trading pair symbol. The 'from' value always represents the crypto token (regardless of Buy or Sell) while the 'to' value always represents the fiat token. That is, 'from' -> 'to' refers to the tickers if 'from' is sold in exchange for 'to'. */
 const pairMap = new Map<string, TradingPair>([
   ['BATUSD', { from: 'BAT', to: 'USD' } as const],
   ['AVAXUSD', { from: 'AVAX', to: 'USD' } as const],
@@ -86,6 +87,7 @@ const pairMap = new Map<string, TradingPair>([
   ['USDC', {}],
   ['USDCUSD', {}],
   ['USDTZUSD', {}],
+  // BTC deposits only (type: 'Credit')
   ['BTC', { from: 'BTC', to: 'USD' } as const],
   ['BTCUSD', { from: 'BTC', to: 'USD' } as const],
   ['XBTUSDC', { from: 'BTC', to: 'USD' } as const],
@@ -159,25 +161,33 @@ const geminiTradeToCointracking = (trade: GeminiTrade): CoinTrackingTrade | null
   )
     return null
 
+  // 'to' amount
+  // If Sell, represents the amount of USD received
+  // If Buy, represents the amount of USD spent
   const costRaw = trade[`${to} Amount ${to}` as keyof GeminiTrade]
+  const cost = parseFloat((costRaw || '0').replace(/[$(),]/g, ''))
 
   if ((trade.Type === 'Buy' || trade.Type === 'Sell') && !costRaw) {
     error(`Missing ${to} cost`, trade)
   }
 
+  // 'from' amount
+  // If Sell, represents the amount of tokens sold
+  // If Buy, represents the amount of tokens bought
   const buyAmountRaw = trade[`${from} Amount ${from}` as keyof GeminiTrade]
+  const buyAmount = parseFloat((buyAmountRaw || '0').replace(/[$(),]/g, ''))
 
   if ((trade.Type === 'Buy' || trade.Type === 'Sell') && !buyAmountRaw) {
     error(`Missing ${from} buyAmount`, trade)
   }
 
-  const cost = parseFloat((costRaw || '0').replace(/[$(),]/g, ''))
-  const buyAmount = parseFloat((buyAmountRaw || '0').replace(/[$(),]/g, ''))
+  // price = [total] cost / [tokens] buyAmount
+  // Except Debits (withdrawals) which are not trades and price can be set to 0
   const price = trade.Type === 'Debit' && buyAmount === 0 ? 0 : cost / buyAmount
+
   const [year, month, day] = trade.Date.split('-')
 
   // price is required for Buy/Sell/Credit so that we calculate the correct cost basis
-  // if ((trade.Type === 'Buy' || trade.Type === 'Sell' || trade.Type === 'Credit') && !price) {
   if (trade.Type === 'Sell' && cost === 0 && buyAmount < 1) {
     if (buyAmount > 1) {
       error(
@@ -200,6 +210,7 @@ const geminiTradeToCointracking = (trade: GeminiTrade): CoinTrackingTrade | null
           : trade.Type === 'Debit'
             ? 'Withdrawal'
             : trade.Type,
+    // TODO: Not sure why cost / price is used for Credit, but it has been this way since geminiTradeToCointracking was created
     Buy: trade.Type === 'Buy' || trade.Type === 'Credit' ? cost / price : cost,
     CurBuy: trade.Type === 'Buy' || trade.Type === 'Credit' ? from : 'USD',
     Sell: trade.Type === 'Sell' ? cost / price : cost,
