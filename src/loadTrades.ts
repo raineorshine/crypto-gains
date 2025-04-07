@@ -210,7 +210,7 @@ const geminiTradeToCointracking = (trade: GeminiTrade): CoinTrackingTrade | null
           : trade.Type === 'Debit'
             ? 'Withdrawal'
             : trade.Type,
-    Buy: trade.Type === 'Buy' ? cost / price : cost,
+    Buy: trade.Type === 'Credit' ? buyAmount : trade.Type === 'Buy' ? cost / price : cost,
     CurBuy: trade.Type === 'Buy' || trade.Type === 'Credit' ? from : 'USD',
     Sell: trade.Type === 'Sell' ? cost / price : cost,
     CurSell: trade.Type === 'Sell' ? from : 'USD',
