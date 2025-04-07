@@ -197,7 +197,7 @@ const geminiTradeToCointracking = (trade: GeminiTrade): CoinTrackingTrade | null
     return null
   }
 
-  if ((trade.Type === 'Buy' || trade.Type === 'Credit') && isNaN(cost / price)) {
+  if ((trade.Type === 'Buy' || trade.Type === 'Sell') && isNaN(cost / price)) {
     error('NaN encountered: cost / price', { trade, from, to, cost, price, buyAmount })
   }
 
@@ -210,8 +210,7 @@ const geminiTradeToCointracking = (trade: GeminiTrade): CoinTrackingTrade | null
           : trade.Type === 'Debit'
             ? 'Withdrawal'
             : trade.Type,
-    // TODO: Not sure why cost / price is used for Credit, but it has been this way since geminiTradeToCointracking was created
-    Buy: trade.Type === 'Buy' || trade.Type === 'Credit' ? cost / price : cost,
+    Buy: trade.Type === 'Buy' ? cost / price : cost,
     CurBuy: trade.Type === 'Buy' || trade.Type === 'Credit' ? from : 'USD',
     Sell: trade.Type === 'Sell' ? cost / price : cost,
     CurSell: trade.Type === 'Sell' ? from : 'USD',
