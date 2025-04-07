@@ -74,3 +74,8 @@ Price errors: 0
 2019 Long-Term Sales (0): $0
 2019 Interest (0): $0
 ```
+
+## Errors
+
+- **No matching withdrawals** - Indicates a matching withdrawal was not found for a deposit, so its cost basis is unknown. This will default to the historical price at the time of the deposit, which is not correct but will allow the script to at least complete. If the cost basis should be lower, this could result in undercalculating gains and should be investigated. Run with `--verbose` to show individual warning messages.
+  - e.g. WARNING: No matching withdrawal for deposit of 1 SLV on 08.01.2019 09:00. Using historical price.
