@@ -126,16 +126,16 @@ const cryptogains = async (
     likekind?: boolean
   } = {},
 ) => {
-  const matched = []
-  const unmatched = []
-  const income = []
-  const cryptoToUsd = []
-  const usdToCrypto = []
-  const usdDeposits = []
-  const withdrawals = []
-  const margin = []
-  const tradeTxs = []
-  const airdrops = []
+  const matched: CoinTrackingTrade[] = []
+  const unmatched: CoinTrackingTrade[] = []
+  const income: CoinTrackingTrade[] = []
+  const cryptoToUsd: CoinTrackingTrade[] = []
+  const usdToCrypto: CoinTrackingTrade[] = []
+  const usdDeposits: CoinTrackingTrade[] = []
+  const withdrawals: CoinTrackingTrade[] = []
+  const margin: CoinTrackingTrade[] = []
+  const tradeTxs: CoinTrackingTrade[] = []
+  const airdrops: CoinTrackingTrade[] = []
 
   /* List of sales (not including like-kind-exchanges)
   {
@@ -149,10 +149,10 @@ const cryptogains = async (
   const sales: Transaction[] = []
   const interest: Loan[] = [] // loan interest earned must be reported differently than sales
   const likeKindExchanges: Transaction[] = []
-  const noAvailablePurchases = []
-  const noMatchingWithdrawals = []
-  const priceErrors = []
-  const zeroPrices = []
+  const noAvailablePurchases: Error[] = []
+  const noMatchingWithdrawals: string[] = []
+  const priceErrors: CoinTrackingTrade[] = []
+  const zeroPrices: CoinTrackingTrade[] = []
 
   const txsByDay = groupByDay(txs)
 
@@ -439,7 +439,7 @@ const cryptogains = async (
             log.verbose.warn(message)
             noMatchingWithdrawals.push(message)
 
-            const newTx = {
+            const newTx: CoinTrackingTrade = {
               ...tx,
               Type: 'Income',
               Comment: 'Cost Basis',
