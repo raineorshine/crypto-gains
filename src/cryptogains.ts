@@ -449,7 +449,12 @@ const cryptogains = async (
             unmatched.push(newTx)
           }
 
-          stock.deposit(+tx.Buy!, tx.CurBuy, tx.Buy! * p!, tx['Trade Date'])
+          if (!tx.Buy) {
+            console.error(tx, { p })
+            throw new Error('Missing tx.Buy')
+          }
+
+          stock.deposit(+tx.Buy, tx.CurBuy, tx.Buy * p!, tx['Trade Date'])
         }
       }
 
