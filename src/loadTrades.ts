@@ -187,6 +187,10 @@ const geminiTradeToCointracking = (trade: GeminiTrade): CoinTrackingTrade | null
     return null
   }
 
+  if ((trade.Type === 'Buy' || trade.Type === 'Credit') && isNaN(cost / price)) {
+    error('NaN encountered: cost / price', { trade, from, to, cost, price, buyAmount })
+  }
+
   return {
     Type:
       trade.Type === 'Buy' || trade.Type === 'Sell'
