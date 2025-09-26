@@ -11,6 +11,7 @@
   },
   "license": "ISC",
   "scripts": {
+    "build": "tsc",
     "test": "mocha src",
     "watch": "tsc --watch"
   },
