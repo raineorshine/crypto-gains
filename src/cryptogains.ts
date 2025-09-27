@@ -190,11 +190,11 @@ const cryptogains = async (
 
   // loop through each day
   for (let key in txsByDay) {
-    const group = txsByDay[key]
+    const dayGroup = txsByDay[key]
 
     // loop through each of the day's transactions
-    for (let i in group) {
-      const tx = group[i]
+    for (let i in dayGroup) {
+      const tx = dayGroup[i]
 
       // convert ICO's to Trade
       // the matching withdrawal of CurSell can be ignored since it does no affect cost basis
@@ -412,7 +412,7 @@ const cryptogains = async (
           stock.deposit(+tx.Buy!, tx.CurBuy, 0, tx['Trade Date'])
         }
         // try to match the deposit to a same-day withdrawal
-        else if (findMatchingWithdrawal(tx, group)) {
+        else if (findMatchingWithdrawal(tx, dayGroup)) {
           matched.push(tx)
         }
         // SALT presale
