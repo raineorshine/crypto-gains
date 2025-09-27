@@ -54,6 +54,7 @@ const geminiColumns: (keyof GeminiTrade)[] = [
   'Withdrawal Tx Output',
 ]
 
+// Corresponding type: KrakenTrade
 const krakenColumns = [
   'txid',
   'ordertxid',
@@ -255,9 +256,8 @@ const loadTradeHistoryFile = async (file: string | null): Promise<CoinTrackingTr
   const filename = path.basename(file)
   const ext = path.extname(file).toLowerCase()
 
-  // json
-  // Uniswap is the only supported json format
   switch (ext) {
+    // UniSwap
     case '.json': {
       const uniswapTrades = JSON.parse(text) as UniswapTrade[]
       const trades = uniswapTrades.map(uniswapTradeToCointracking).filter(nonNull)
