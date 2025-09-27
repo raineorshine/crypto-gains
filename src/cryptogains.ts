@@ -42,15 +42,6 @@ const day = (date: string) => date.split(' ')[0]
 /** Convert a string value to a number and set '-' to 0. */
 const z = (v: string | number) => (v === '-' ? 0 : +v)
 
-/** Checks if two txs are within a margin of error from each other. */
-const closeEnough = (tx1: CoinTrackingTrade, tx2: CoinTrackingTrade) => {
-  const errorRange = tx1.CurBuy === 'BTC' ? 0.2 : tx1.CurBuy === 'ETH' ? 0.2 : 0.5
-  return (
-    Math.abs(z(tx1.Buy ?? '-') - z(tx2.Sell ?? '-')) < errorRange &&
-    Math.abs(z(tx1.Sell ?? '-') - z(tx2.Buy ?? '-')) < errorRange
-  )
-}
-
 // memoized price
 const mPrice = memoize('price').async(async (key: string): Promise<number | string> => {
   const { from, to, time, exchange } = JSON.parse(key)
@@ -93,6 +84,13 @@ const isCryptoToUsd = (trade: CoinTrackingTrade) =>
   (trade.Type === 'Spend' && trade.Exchange !== 'Ledger')
 
 const isUsdToCrypto = (trade: CoinTrackingTrade) => trade.Type === 'Trade' && trade.CurSell === 'USD'
+
+/** Checks if a withdrawal Sell amount is within a margin of error from a deposit's Buy amount. Ignores the withdrawal's Buy amount and deposit's Sell amount. */
+const closeEnough = (deposit: CoinTrackingTrade, tx: CoinTrackingTrade) => {
+  if (!deposit.Buy || !tx.Sell) return false
+  const errorRange = deposit.CurBuy === 'BTC' ? 0.2 : deposit.CurBuy === 'ETH' ? 0.2 : 0.5
+  return Math.abs(deposit.Buy - tx.Sell) < errorRange
+}
 
 /** Find a withdrawal in the given list of transactions that matches the given deposit. */
 const findMatchingWithdrawal = (deposit: CoinTrackingTrade, txs: CoinTrackingTrade[]) =>
