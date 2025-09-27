@@ -31,8 +31,7 @@ const Stock = () => {
     lots.push({ amount, cur, cost, date })
   }
 
-  // assume withdraw is not a sale; maintain cost basis
-  // validates available purchases
+  /** Assume withdraw is not a sale; maintain cost basis. Validates available purchases. */
   const withdraw = (amount, cur, date, type = 'fifo') => {
     let pending = amount
     const exchangeLots = []

@@ -10,7 +10,7 @@ import cryptogains from './cryptogains.js'
 import loadTrades from './loadTrades.js'
 import log from './log.js'
 
-// convert trades array to CSV and restore header
+/** Convert trades array to CSV and restore header. */
 const toCSV = (trades: unknown[], fields: { value: string; label: string }[]): string => {
   const csv = json2csv.parse(trades, { delimiter: ',', fields })
   const csvLines = csv.split('\n')
@@ -22,10 +22,10 @@ const toCSV = (trades: unknown[], fields: { value: string; label: string }[]): s
     .join('\n')
 }
 
-// convert d-m-y date (e.g. 18.06.2016 15:14 0) to y-m-d
+/** Convert d-m-y date (e.g. 18.06.2016 15:14 0) to y-m-d. */
 const normalDate = (d: string): string => `${d.slice(6, 10)}-${d.slice(3, 5)}-${d.slice(0, 2)} ${d.slice(11)}`
 
-// return true if the sale date is over a year from the acquisision date
+/** Return true if the sale date is over a year from the acquisision date. */
 const isShortTerm = (sale: Transaction): boolean => {
   const buyTime = new Date(normalDate(sale.dateAcquired)).getTime()
   const saleTime = new Date(normalDate(sale.date)).getTime()
@@ -39,7 +39,7 @@ const formatPrice = (n: number): string => {
   return chalk[n > 0 ? 'green' : n < 0 ? 'red' : 'cyan'](priceString)
 }
 
-// add two numbers
+/** Add two numbers. */
 const sum = (x: number, y: number): number => x + y
 
 /****************************************************************

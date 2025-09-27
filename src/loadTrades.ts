@@ -131,7 +131,7 @@ const isDir = (inputPath: string): boolean => fs.lstatSync(inputPath).isDirector
 /** Returns true if the file is one of the ignored file names. */
 const ignoreTradeFile = (file: string): boolean => file === '.DS_Store'
 
-// replace duplicate Cur. with CurBuy, CurSell, CurFee
+/** Replace duplicate Cur. with CurBuy, CurSell, CurFee. */
 const fixCointrackingHeader = (input: string): string => {
   const lines = input.split('\n')
   return ([] as string[])

@@ -23,7 +23,7 @@ const secure = JSON.parse(await fs.readFile(new URL('../data/secure.json', impor
 
 const stock = Stock()
 
-// group transactions by day
+/** Group transactions by day. */
 const groupByDay = (trades: CoinTrackingTrade[]) => {
   const txsByDay: { [key: string]: CoinTrackingTrade[] } = {}
   for (let i = 0; i < trades.length; i++) {
@@ -36,17 +36,17 @@ const groupByDay = (trades: CoinTrackingTrade[]) => {
   return txsByDay
 }
 
-// get the day of the normalized date string
+/** Get the day of the normalized date string. */
 const day = (date: string) => date.split(' ')[0]
 
-// get the opposite tx type: Deposit/Withdrawal
+/** Get the opposite tx type: Deposit/Withdrawal. */
 // TODO: What if type is not a Deposit or a Withdrawal?
 const otherType = (type: CoinTrackingTrade['Type']) => (type === 'Deposit' ? 'Withdrawal' : 'Deposit')
 
-// convert a string value to a number and set '-' to 0
+/** Convert a string value to a number and set '-' to 0. */
 const z = (v: string | number) => (v === '-' ? 0 : +v)
 
-// checks if two txs are within a margin of error from each other
+/** Checks if two txs are within a margin of error from each other. */
 const closeEnough = (tx1: CoinTrackingTrade, tx2: CoinTrackingTrade) => {
   const errorRange = tx1.CurBuy === 'BTC' ? 0.2 : tx1.CurBuy === 'ETH' ? 0.2 : 0.5
   return (
@@ -55,7 +55,7 @@ const closeEnough = (tx1: CoinTrackingTrade, tx2: CoinTrackingTrade) => {
   )
 }
 
-// checks if two transactions are a Deposit/Withdrawal match
+/** Checks if two transactions are a Deposit/Withdrawal match. */
 const match = (tx1: CoinTrackingTrade, tx2: CoinTrackingTrade) =>
   tx1.Type === otherType(tx2.Type) && tx1.CurBuy === tx2.CurSell && tx1.CurSell === tx2.CurBuy && closeEnough(tx1, tx2)
 
@@ -102,11 +102,11 @@ const isCryptoToUsd = (trade: CoinTrackingTrade) =>
 
 const isUsdToCrypto = (trade: CoinTrackingTrade) => trade.Type === 'Trade' && trade.CurSell === 'USD'
 
-// find a withdrawal in the given list of transactions that matches the given deposit
+/** Find a withdrawal in the given list of transactions that matches the given deposit. */
 const findMatchingWithdrawal = (deposit: CoinTrackingTrade, txs: CoinTrackingTrade[]) =>
   txs.find(tx => match(deposit, tx))
 
-// convert airdropSymbols from array to object for O(1) lookup
+/** Convert airdropSymbols from array to object for O(1) lookup. */
 const airdropIndex = secure.airdropSymbols.reduce(
   (accum, cur) => ({
     ...accum,
@@ -116,9 +116,11 @@ const airdropIndex = secure.airdropSymbols.reduce(
 )
 const isAirdrop = (symbol: string) => symbol.toLowerCase() in airdropIndex
 
-// group transactions into several broad categories
-// match same-day withdrawals and deposits
-// calculate custom cost basis
+/**
+ * Group transactions into several broad categories.
+ * Match same-day withdrawals and deposits.
+ * Calculate custom cost basis.
+ */
 const cryptogains = async (
   txs: CoinTrackingTrade[],
   options: {
