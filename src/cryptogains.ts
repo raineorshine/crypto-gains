@@ -173,7 +173,7 @@ const cryptogains = async (
       // Poloniex market does not exist for some coin pairs
       p = await price(from, to, time, options)
     } catch (e: any) {
-      log.error(`Error fetching price`, e.message)
+      log.error(`Error fetching price of ${from}.`, e.message)
       priceErrors.push(tx)
     }
 
