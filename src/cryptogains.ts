@@ -454,7 +454,11 @@ const cryptogains = async (
             throw new Error('Missing tx.Buy')
           }
 
-          stock.deposit(+tx.Buy, tx.CurBuy, tx.Buy * p!, tx['Trade Date'])
+          // TODO: What if there is no price on this date? There is no way to determine the cost basis.
+          // For now, just skip it and a price error will be reported.
+          if (p) {
+            stock.deposit(+tx.Buy, tx.CurBuy, tx.Buy * p, tx['Trade Date'])
+          }
         }
       }
 
