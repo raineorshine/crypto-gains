@@ -73,7 +73,7 @@ const mPrice = memoize('price').async(async (key: string): Promise<number | stri
 
   if (data[from]) {
     return data[from][to]
-  } else if (data.Message.startsWith('There is no data for the symbol')) {
+  } else if (data.Message.startsWith('There is no data for')) {
     throw new Error(`No price for ${from} on ${time}`)
   } else if (data.Response === 'Error') {
     throw new Error(data.Message)
