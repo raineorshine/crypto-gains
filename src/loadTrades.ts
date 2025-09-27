@@ -4,6 +4,7 @@ import path from 'path'
 import CoinTrackingTrade from './@types/CoinTrackingTrade.js'
 import GeminiTrade from './@types/GeminiTrade.js'
 import KrakenTrade from './@types/KrakenTrade.js'
+import LedgerTrade from './@types/LedgerTrade.js'
 import TradingPair from './@types/TradingPair.js'
 import UniswapTrade from './@types/UniswapTrade.js'
 import error from './error.js'
@@ -11,7 +12,7 @@ import log from './log.js'
 import nonNull from './nonNull.js'
 import normalDate from './normalDate.js'
 
-const allowedCsvFormats = ['CoinTracking', 'Gemini', 'Kraken']
+const allowedCsvFormats = ['CoinTracking', 'Gemini', 'Kraken', 'Ledger Operation History']
 
 // Corresponding type: CoinTrackingTrade
 const cointrackingColumns: (keyof CoinTrackingTrade | 'Cur.')[] = [
@@ -69,6 +70,22 @@ const krakenColumns = [
   'margin',
   'misc',
   'ledgers',
+]
+
+// Corresponding type: LedgerTrade
+const ledgerColumns = [
+  'Operation Date',
+  'Status',
+  'Currency Ticker',
+  'Operation Type',
+  'Operation Amount',
+  'Operation Fees',
+  'Operation Hash',
+  'Account Name',
+  'Account xpub',
+  'Countervalue Ticker',
+  'Countervalue at Operation Date',
+  'Countervalue at CSV Export',
 ]
 
 /** Extracts the from/to pair of currencies from a given trading pair symbol. The 'from' value always represents the crypto token (regardless of Buy or Sell) while the 'to' value always represents the fiat token. That is, 'from' -> 'to' refers to the tickers if 'from' is sold in exchange for 'to'. */
@@ -229,8 +246,8 @@ const uniswapTradeToCointracking = (trade: UniswapTrade): CoinTrackingTrade | nu
 
   const buyAmount = parseFloat(trade.to.amount || '0')
   const sellAmount = parseFloat(trade.from.amount || '0')
-  const date = new Date(trade.date)
 
+  const date = new Date(trade.date)
   const days = date.getDate().toString().padStart(2, '0')
   const month = (date.getMonth() + 1).toString().padStart(2, '0')
   const year = date.getFullYear()
@@ -246,6 +263,41 @@ const uniswapTradeToCointracking = (trade: UniswapTrade): CoinTrackingTrade | nu
     Exchange: 'Uniswap',
     'Trade Date': `${days}.${month}.${year} ${hours}:${minutes}`,
     Price: sellAmount / buyAmount,
+  }
+}
+
+/** Converts a transaction from the Ledger Live operations history to the Cointracking schema. Records deposits and withdrawals. */
+const ledgerTradeToCointracking = (trade: LedgerTrade): CoinTrackingTrade | null => {
+  const date = new Date(trade['Operation Date'])
+  const days = date.getDate().toString().padStart(2, '0')
+  const month = (date.getMonth() + 1).toString().padStart(2, '0')
+  const year = date.getFullYear()
+  const hours = date.getHours().toString().padStart(2, '0')
+  const minutes = date.getMinutes().toString().padStart(2, '0')
+
+  const isDeposit = trade['Operation Type'] === 'IN' || trade['Operation Type'] === 'UNDELEGATE'
+  const isWithdrawal =
+    trade['Operation Type'] === 'OUT' ||
+    trade['Operation Type'] === 'WITHDRAW_UNBONDED' ||
+    // treat DELEGATE as a withdrawal since the funds are locked up and cannot be sold
+    // TODO: Calculate income from staking rewards
+    trade['Operation Type'] === 'DELEGATE'
+
+  return {
+    Type: isDeposit
+      ? 'Deposit'
+      : isWithdrawal
+        ? 'Withdrawal'
+        : trade['Operation Type'] === 'FEES'
+          ? 'Spend'
+          : error(`Unrecognized Ledger operation type: ${trade['Operation Type']}`),
+    Buy: isDeposit ? trade['Operation Amount'] : null,
+    CurBuy: isDeposit ? trade['Currency Ticker'] : undefined,
+    Sell: isWithdrawal ? +trade['Operation Amount'] : null,
+    CurSell: isWithdrawal ? trade['Currency Ticker'] : undefined,
+    Exchange: 'Ledger',
+    'Trade Date': `${days}.${month}.${year} ${hours}:${minutes}`,
+    Fee: trade['Operation Type'] === 'FEES' ? trade['Operation Amount'].toString() : undefined,
   }
 }
 
@@ -310,6 +362,13 @@ const loadTradeHistoryFile = async (file: string | null): Promise<CoinTrackingTr
             .filter(nonNull)
 
           log.verbose(`  ${filename} [Kraken]: ${trades.length} trades`)
+          return trades
+        }
+        // Ledger Operation History
+        else if (ledgerColumns.every(col => headerColumns.includes(col))) {
+          const ledgerTrades = (await csvtojson().fromString(text)) as LedgerTrade[]
+          const trades = ledgerTrades.map(ledgerTradeToCointracking).filter(nonNull)
+          log.verbose(`  ${filename} [Ledger]: ${trades.length} trades`)
           return trades
         } else {
           const matchResults = allowedCsvFormats.map(format => {

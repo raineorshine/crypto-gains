@@ -98,7 +98,7 @@ const isCryptoToUsd = (trade: CoinTrackingTrade) =>
     trade.Sell !== null &&
     trade.Sell < 4) || // shift card (infer)
   (trade.Type === 'Trade' && trade.CurBuy === 'USD') ||
-  trade.Type === 'Spend'
+  (trade.Type === 'Spend' && trade.Exchange !== 'Ledger')
 
 const isUsdToCrypto = (trade: CoinTrackingTrade) => trade.Type === 'Trade' && trade.CurSell === 'USD'
 
@@ -461,6 +461,11 @@ const cryptogains = async (
       // WITHDRAWAL
       else if (tx.Type === 'Withdrawal') {
         withdrawals.push(tx)
+      }
+
+      // SPEND
+      else if (tx.Type === 'Spend') {
+        stock.withdraw(+tx.Sell!, tx.CurSell, tx['Trade Date'], options.accounting)
       }
 
       // UNKNOWN
