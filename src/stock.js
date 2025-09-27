@@ -9,6 +9,14 @@ const closeEnough = (a, b) => Math.abs(a - b) <= 0.02
 const Stock = () => {
   const lots = []
 
+  const all = () =>
+    lots.reduce(
+      (accum, item) => ({
+        ...accum,
+        [item.cur]: (accum[item.cur] || 0) + item.amount,
+      }),
+      {},
+    )
   const balance = cur => lots.filter(lot => lot.cur === cur).reduce((prev, item) => prev + item.amount, 0)
   const next = (cur, type = 'fifo') => (type === 'fifo' ? lots : lots.slice().reverse()).find(lot => lot.cur === cur)
   const remove = lot => lots.splice(lots.indexOf(lot), 1)
@@ -186,7 +194,7 @@ const Stock = () => {
     return trades
   }
 
-  return { balance, deposit, withdraw, trade }
+  return { all, balance, deposit, withdraw, trade }
 }
 
 function NoAvailablePurchaseError(msg) {
