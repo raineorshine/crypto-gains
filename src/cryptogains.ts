@@ -405,7 +405,7 @@ const cryptogains = async (
           stock.deposit(+tx.Buy!, 'USD', +tx.Buy!, tx['Trade Date'])
         }
         // air drops have cost basis of 0
-        else if (isAirdrop(tx.CurBuy!)) {
+        else if (tx.CurBuy && isAirdrop(tx.CurBuy)) {
           airdrops.push(tx)
           stock.deposit(+tx.Buy!, tx.CurBuy, 0, tx['Trade Date'])
         }
