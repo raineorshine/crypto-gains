@@ -39,10 +39,6 @@ const groupByDay = (trades: CoinTrackingTrade[]) => {
 /** Get the day of the normalized date string. */
 const day = (date: string) => date.split(' ')[0]
 
-/** Get the opposite tx type: Deposit/Withdrawal. */
-// TODO: What if type is not a Deposit or a Withdrawal?
-const otherType = (type: CoinTrackingTrade['Type']) => (type === 'Deposit' ? 'Withdrawal' : 'Deposit')
-
 /** Convert a string value to a number and set '-' to 0. */
 const z = (v: string | number) => (v === '-' ? 0 : +v)
 
@@ -54,10 +50,6 @@ const closeEnough = (tx1: CoinTrackingTrade, tx2: CoinTrackingTrade) => {
     Math.abs(z(tx1.Sell ?? '-') - z(tx2.Buy ?? '-')) < errorRange
   )
 }
-
-/** Checks if two transactions are a Deposit/Withdrawal match. */
-const match = (tx1: CoinTrackingTrade, tx2: CoinTrackingTrade) =>
-  tx1.Type === otherType(tx2.Type) && tx1.CurBuy === tx2.CurSell && tx1.CurSell === tx2.CurBuy && closeEnough(tx1, tx2)
 
 // memoized price
 const mPrice = memoize('price').async(async (key: string): Promise<number | string> => {
@@ -104,7 +96,7 @@ const isUsdToCrypto = (trade: CoinTrackingTrade) => trade.Type === 'Trade' && tr
 
 /** Find a withdrawal in the given list of transactions that matches the given deposit. */
 const findMatchingWithdrawal = (deposit: CoinTrackingTrade, txs: CoinTrackingTrade[]) =>
-  txs.find(tx => match(deposit, tx))
+  txs.find(tx => tx.Type === 'Withdrawal' && deposit.CurBuy === tx.CurSell && closeEnough(deposit, tx))
 
 /** Convert airdropSymbols from array to object for O(1) lookup. */
 const airdropIndex = secure.airdropSymbols.reduce(
