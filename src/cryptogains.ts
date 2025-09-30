@@ -423,8 +423,8 @@ const cryptogains = async (
         else {
           const p = tx.Price || (await tryPrice(tx, tx.CurBuy, 'USD', day(normalDate(tx['Trade Date']))))
 
-          // do not report missing USDT or USDC purchases as warnings, since the cost basis is invariant
-          if (tx.CurBuy === 'USDT' || tx.CurBuy === 'USDC') {
+          // do not report missing stable coin purchases as warnings, since the cost basis is invariant
+          if (tx.CurBuy === 'USDT' || tx.CurBuy === 'USDC' || tx.CurBuy === 'DAI') {
             matched.push(tx)
           } else {
             const message = `WARNING: No matching withdrawal for ${tx.Exchange} deposit of ${tx.Buy} ${tx.CurBuy} on ${tx['Trade Date']}. Using historical price of ${p}.`
