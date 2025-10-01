@@ -6,6 +6,8 @@ const currenciesWithMissingPrices = {
 
 const closeEnough = (a, b) => Math.abs(a - b) <= 0.02
 
+const isStableCoin = cur => ['USDT', 'USDC', 'DAI', 'BUSD'].includes(cur)
+
 const Stock = () => {
   const lots = []
 
@@ -115,16 +117,22 @@ const Stock = () => {
         // it will be either completely partially consumed in the trade (mutation)
         lot = next(sellCur, type)
         if (!lot) {
-          console.error(
-            `trade: No available purchase for ${sell} ${sellCur} -> ${buy} ${buyCur} trade on ${date} (${
-              sell - pending
-            } ${sellCur} found)`,
-          )
-
           // If the sell currency is not in stock, then it means that the original purchase is missing.
           // Add buy currency to stock with zero cost basis to be conservative.
+          // Make an exception for sold stable coins, since they are not speculative and should always have a cost basis essentially equal to the sale price
+          if (buyCur === 'USD' && isStableCoin(sellCur)) {
+            costPartial = sell
+          } else {
+            console.error(
+              `trade: No available purchase for ${sell} ${sellCur} -> ${buy} ${buyCur} trade on ${date} (${
+                sell - pending
+              } ${sellCur} found)`,
+            )
+
+            costPartial = 0
+          }
+
           sellPartial = pending
-          costPartial = 0
           pending = 0
         }
         // lot has a larger supply than is needed
