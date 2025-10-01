@@ -31,7 +31,7 @@ const Stock = () => {
     lots.push({ amount, cur, cost, date })
   }
 
-  /** Assume withdraw is not a sale; maintain cost basis. Validates available purchases. */
+  /** Assume withdraw is not a sale; maintain cost basis. Assume that withdrawn funds stay under my custodianship and do not debit lot. Validates available purchases. */
   const withdraw = (amount, cur, date, type = 'fifo') => {
     let pending = amount
     const exchangeLots = []
@@ -43,20 +43,24 @@ const Stock = () => {
     while (pending > 0) {
       // must use index since lots are not removed with withdraw
       const lot = curLots[type === 'fifo' ? i++ : i--]
-      if (!lot)
-        throw new NoAvailablePurchaseError(
+      let lotDebit, cost
+
+      if (!lot) {
+        console.error(
           `withdraw: No available purchase for ${amount} ${cur} on ${date} (${amount - pending} ${cur} found)`,
         )
 
-      let lotDebit, cost
-
+        lotDebit = pending
+        cost = 0
+        pending = 0
+      }
       // lot has a larger supply than is needed
-      if (lot.amount > pending || closeEnough(lot.amount, pending)) {
+      // lot is close enough
+      else if (lot.amount > pending || closeEnough(lot.amount, pending)) {
         lotDebit = pending
         cost = lot.cost * (pending / lot.amount)
         pending = 0
       }
-      // lot is close enough
       // lot is not big enough
       else {
         lotDebit = lot.amount
@@ -68,7 +72,7 @@ const Stock = () => {
         amount: lotDebit,
         cur,
         cost,
-        date: lot.date,
+        date: lot ? lot.date : date,
       })
     }
 
@@ -110,13 +114,21 @@ const Stock = () => {
         // get the next lot with the sell currency
         // it will be either completely partially consumed in the trade (mutation)
         lot = next(sellCur, type)
-        if (!lot)
-          throw new NoAvailablePurchaseError(
-            `trade: No available purchase for ${sell} ${sellCur} trade on ${date} (${sell - pending} ${sellCur} found)`,
+        if (!lot) {
+          console.error(
+            `trade: No available purchase for ${sell} ${sellCur} -> ${buy} ${buyCur} trade on ${date} (${
+              sell - pending
+            } ${sellCur} found)`,
           )
 
+          // If the sell currency is not in stock, then it means that the original purchase is missing.
+          // Add buy currency to stock with zero cost basis to be conservative.
+          sellPartial = pending
+          costPartial = 0
+          pending = 0
+        }
         // lot has a larger supply than is needed
-        if (lot.amount > pending || closeEnough(lot.amount, pending)) {
+        else if (lot.amount > pending || closeEnough(lot.amount, pending)) {
           sellPartial = pending
           costPartial = lot.cost * (sellPartial / lot.amount) // proportional cost of the amount that is taken from the lot
           lot.amount -= pending // debit sell amount from lot
@@ -195,11 +207,5 @@ const Stock = () => {
 
   return { all, balance, deposit, withdraw, trade }
 }
-
-function NoAvailablePurchaseError(msg) {
-  this.message = msg
-}
-NoAvailablePurchaseError.prototype = new Error()
-Stock.NoAvailablePurchaseError = NoAvailablePurchaseError
 
 export default Stock

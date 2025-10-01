@@ -141,7 +141,6 @@ const cryptogains = async (
   const sales: Transaction[] = []
   const interest: Loan[] = [] // loan interest earned must be reported differently than sales
   const likeKindExchanges: Transaction[] = []
-  const noAvailablePurchases: Error[] = []
   const noMatchingWithdrawals: string[] = []
   const priceErrors: CoinTrackingTrade[] = []
   const zeroPrices: CoinTrackingTrade[] = []
@@ -282,50 +281,41 @@ const cryptogains = async (
         cryptoToUsd.push(tx)
 
         // update cost basis
-        try {
-          // Trade to USD
-          if (tx.Type === 'Trade') {
-            sales.push(
-              ...stock.trade({
-                isLikekind: undefined,
-                sell: +tx.Sell!,
-                sellCur: tx.CurSell,
-                buy: +tx.Buy!,
-                buyCur: 'USD',
-                date: tx['Trade Date'],
-                price: undefined,
-                type: options.accounting,
-              }),
-            )
-          }
-          // Shift: we have to calculate the historical USD sale value since Coinbase only provides the token price
-          else {
-            const p =
-              tx.Price ||
-              (await tryPrice(tx, tx.CurSell, 'USD', day(normalDate(tx['Trade Date'])), {
-                exchange: tx.Exchange,
-              })) ||
-              0
-            sales.push(
-              ...stock.trade({
-                isLikekind: undefined,
-                sell: +tx.Sell!,
-                sellCur: tx.CurSell,
-                buy: tx.Sell! * +p!,
-                buyCur: 'USD',
-                date: tx['Trade Date'],
-                price: undefined,
-                type: options.accounting,
-              }),
-            )
-          }
-        } catch (e: any) {
-          if (e instanceof Stock.NoAvailablePurchaseError) {
-            log.verbose.error('Error making trade:', e.message)
-            noAvailablePurchases.push(e)
-          } else {
-            throw e
-          }
+        // Trade to USD
+        if (tx.Type === 'Trade') {
+          sales.push(
+            ...stock.trade({
+              isLikekind: undefined,
+              sell: +tx.Sell!,
+              sellCur: tx.CurSell,
+              buy: +tx.Buy!,
+              buyCur: 'USD',
+              date: tx['Trade Date'],
+              price: undefined,
+              type: options.accounting,
+            }),
+          )
+        }
+        // Shift: we have to calculate the historical USD sale value since Coinbase only provides the token price
+        else {
+          const p =
+            tx.Price ||
+            (await tryPrice(tx, tx.CurSell, 'USD', day(normalDate(tx['Trade Date'])), {
+              exchange: tx.Exchange,
+            })) ||
+            0
+          sales.push(
+            ...stock.trade({
+              isLikekind: undefined,
+              sell: +tx.Sell!,
+              sellCur: tx.CurSell,
+              buy: tx.Sell! * +p!,
+              buyCur: 'USD',
+              date: tx['Trade Date'],
+              price: undefined,
+              type: options.accounting,
+            }),
+          )
         }
       }
 
@@ -355,28 +345,19 @@ const cryptogains = async (
         }
 
         // update cost basis
-        try {
-          const isLikekind = options.likekind && new Date(normalDate(tx['Trade Date'])).getFullYear() < 2018
-          const trades = stock.trade({
-            isLikekind,
-            sell: +tx.Sell!,
-            sellCur: tx.CurSell,
-            buy: +tx.Buy!,
-            buyCur: tx.CurBuy,
-            date: tx['Trade Date'],
-            price: p,
-            type: options.accounting,
-          })
+        const isLikekind = options.likekind && new Date(normalDate(tx['Trade Date'])).getFullYear() < 2018
+        const trades = stock.trade({
+          isLikekind,
+          sell: +tx.Sell!,
+          sellCur: tx.CurSell,
+          buy: +tx.Buy!,
+          buyCur: tx.CurBuy,
+          date: tx['Trade Date'],
+          price: p,
+          type: options.accounting,
+        })
 
-          ;(isLikekind ? likeKindExchanges : sales).push(...trades)
-        } catch (e: any) {
-          if (e instanceof Stock.NoAvailablePurchaseError) {
-            log.verbose.error('Error making trade:', e.message)
-            noAvailablePurchases.push(e)
-          } else {
-            throw e
-          }
-        }
+        ;(isLikekind ? likeKindExchanges : sales).push(...trades)
       }
 
       // INCOME
@@ -485,7 +466,6 @@ const cryptogains = async (
     sales,
     interest,
     likeKindExchanges,
-    noAvailablePurchases,
     noMatchingWithdrawals,
     priceErrors,
     zeroPrices,

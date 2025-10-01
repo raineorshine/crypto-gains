@@ -299,21 +299,20 @@ describe('stock', () => {
       assert.equal(stock.balance('ETH'), 10)
     })
 
-    it('error if not enough purchases for trade', () => {
+    it('add purchased currency to stock even if there is not enough sell assets', () => {
       const stock = Stock()
       const date = new Date()
-      let error
       stock.deposit(10, 'BTC', 40000, date)
-      const errorF = () =>
-        stock.trade({
-          sell: 11,
-          sellCur: 'BTC',
-          buy: 110,
-          buyCur: 'ETH',
-          date: date,
-          price: 400,
-        })
-      assert.throws(errorF)
+      stock.trade({
+        sell: 11,
+        sellCur: 'BTC',
+        buy: 110,
+        buyCur: 'ETH',
+        date: date,
+        price: 400,
+      })
+      assert.equal(stock.balance('BTC'), 0)
+      assert.equal(stock.balance('ETH'), 110)
     })
 
     it('allow margin of error in supply', () => {
@@ -366,13 +365,25 @@ describe('stock', () => {
       assert.equal(stock.balance('BTC'), 10)
     })
 
-    it('error if not enough purchases for withdrawal', () => {
+    it('withdraw remainder with zero cost basis if currency is missing from stock', () => {
       const stock = Stock()
       const date = new Date()
-      let error
       stock.deposit(10, 'BTC', 40000, date)
-      const errorF = () => stock.withdraw(11, 'BTC', date)
-      assert.throws(errorF)
+      const withdrawals = stock.withdraw(11, 'BTC', date)
+      assert.deepEqual(withdrawals, [
+        {
+          amount: 10,
+          cur: 'BTC',
+          cost: 40000,
+          date,
+        },
+        {
+          amount: 1,
+          cur: 'BTC',
+          cost: 0,
+          date,
+        },
+      ])
     })
 
     it('work across multiple purchases', () => {
