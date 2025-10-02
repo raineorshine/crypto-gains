@@ -8,7 +8,7 @@ import Transaction from './@types/Transaction.js'
 import log from './log.js'
 import normalDate from './normalDate.js'
 import Stock from './stock.js'
-import isStableCoin from './util/isStableCoin.js'
+import isUsdEquivalent from './util/isUsdEquivalent.js'
 
 const secure = JSON.parse(await fs.readFile(new URL('../data/secure.json', import.meta.url), 'utf-8')) as {
   airdropSymbols: string[]
@@ -81,8 +81,7 @@ const isCryptoToUsd = (trade: CoinTrackingTrade) =>
   (trade.Type === 'Trade' && trade.CurBuy === 'USD') ||
   (trade.Type === 'Spend' && trade.Exchange !== 'Ledger')
 
-const isUsdToCrypto = (trade: CoinTrackingTrade) =>
-  trade.Type === 'Trade' && (trade.CurSell === 'USD' || isStableCoin(trade.CurSell))
+const isUsdToCrypto = (trade: CoinTrackingTrade) => trade.Type === 'Trade' && isUsdEquivalent(trade.CurSell)
 
 /** Convert airdropSymbols from array to object for O(1) lookup. */
 const airdropIndex = secure.airdropSymbols.reduce(
