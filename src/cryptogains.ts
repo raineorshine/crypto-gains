@@ -72,7 +72,8 @@ const price = async (
   options: { exchange?: string } = {},
 ): Promise<number> => +(await mPrice(JSON.stringify({ from, to, time, exchange: options.exchange || 'cccagg' })))
 
-const isCryptoToUsd = (trade: CoinTrackingTrade) =>
+/** Returns true if the trade is selling crypto for USD. */
+const isCryptoSale = (trade: CoinTrackingTrade) =>
   (trade.Type === 'Withdrawal' &&
     trade.Exchange === 'Coinbase' &&
     !trade.Fee &&
@@ -107,7 +108,7 @@ const cryptogains = async (
   } = {},
 ) => {
   const income: CoinTrackingTrade[] = []
-  const cryptoToUsd: CoinTrackingTrade[] = []
+  const cryptoSales: CoinTrackingTrade[] = []
   const cryptoPurchases: CoinTrackingTrade[] = []
   const usdDeposits: CoinTrackingTrade[] = []
   const withdrawals: CoinTrackingTrade[] = []
@@ -227,7 +228,7 @@ const cryptogains = async (
 
       // MARGIN
 
-      // must go before isCryptoToUsd
+      // must go before iscryptoSales
       // some Bitfinex margin trades are reported as Lost
       // similar to Trade processing, but does not update stock
       else if (/margin/i.test(tx['Trade Group'] ?? '') || tx.Type === 'Lost') {
@@ -263,8 +264,8 @@ const cryptogains = async (
 
       // USD buy = crypto sale
       // must go before Trade and Withdrawal
-      else if (isCryptoToUsd(tx)) {
-        cryptoToUsd.push(tx)
+      else if (isCryptoSale(tx)) {
+        cryptoSales.push(tx)
 
         // update cost basis
         // Trade to USD
@@ -398,7 +399,7 @@ const cryptogains = async (
 
   return {
     income,
-    cryptoToUsd,
+    cryptoSales,
     cryptoPurchases,
     airdrops,
     usdDeposits,

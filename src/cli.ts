@@ -155,7 +155,7 @@ const sum = (x: number, y: number): number => x + y
 
   const {
     income,
-    cryptoToUsd,
+    cryptoSales,
     cryptoPurchases,
     airdrops,
     usdDeposits,
@@ -181,7 +181,7 @@ const sum = (x: number, y: number): number => x + y
 
   const total =
     withdrawals.length +
-    cryptoToUsd.length +
+    cryptoSales.length +
     cryptoPurchases.length +
     airdrops.length +
     usdDeposits.length +
@@ -191,7 +191,7 @@ const sum = (x: number, y: number): number => x + y
     interest.length
   log('')
   log('Withdrawals:', withdrawals.length)
-  log('Crypto-to-USD:', cryptoToUsd.length)
+  log('Crypto sale:', cryptoSales.length)
   log('Crypto purchases:', cryptoPurchases.length)
   log('USD Deposits:', usdDeposits.length)
   log('Airdrops', airdrops.length)
