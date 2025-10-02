@@ -178,7 +178,7 @@ const sum = (x: number, y: number): number => x + y
 
   // sale.buy is the USD acquired from the trade ("buy" USD)
   // sale.cost is the cost basis
-  const salesWithGain: TransactionWithGain[] = sales.map(sale => ({ ...sale, gain: sale.buy - sale.cost }))
+  const salesWithGain: TransactionWithGain[] = sales.map(sale => ({ ...sale, gain: sale.buy! - sale.cost }))
 
   const total =
     withdrawals.length +

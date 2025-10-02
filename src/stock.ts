@@ -1,28 +1,30 @@
-import isStableCoin from './util/isStableCoin'
+import DateString from './@types/DateString.js'
+import Lot from './@types/Lot.js'
+import Ticker from './@types/Ticker.js'
+import Trade from './@types/Trade.js'
+import isStableCoin from './util/isStableCoin.js'
 
 // known currencies that have missing prices
-const currenciesWithMissingPrices = {
-  APPC: 1,
-  SNT: 1,
-}
+const currenciesWithMissingPrices = new Set(['APPC', 'SNT'])
 
-const closeEnough = (a, b) => Math.abs(a - b) <= 0.02
+const closeEnough = (a: number, b: number) => Math.abs(a - b) <= 0.02
 
 const Stock = () => {
-  const lots = []
+  const lots: Lot[] = []
 
   const all = () =>
     lots.reduce(
       (accum, item) => ({
         ...accum,
-        [item.cur]: (accum[item.cur] || 0) + item.amount,
+        [item.cur]: (accum[item.cur as keyof typeof accum] || 0) + item.amount,
       }),
       {},
     )
-  const balance = cur => lots.filter(lot => lot.cur === cur).reduce((prev, item) => prev + item.amount, 0)
-  const next = (cur, type = 'fifo') => (type === 'fifo' ? lots : lots.slice().reverse()).find(lot => lot.cur === cur)
-  const remove = lot => lots.splice(lots.indexOf(lot), 1)
-  const deposit = (amount, cur, cost, date) => {
+  const balance = (cur: Ticker) => lots.filter(lot => lot.cur === cur).reduce((prev, item) => prev + item.amount, 0)
+  const next = (cur: Ticker, type = 'fifo') =>
+    (type === 'fifo' ? lots : lots.slice().reverse()).find(lot => lot.cur === cur)
+  const remove = (lot: Lot) => lots.splice(lots.indexOf(lot), 1)
+  const deposit = (amount: number, cur: Ticker, cost: number, date: DateString) => {
     if (isNaN(amount) || isNaN(cost)) {
       console.error({ amount, cur, cost, date })
       throw new Error('deposit: NaN encountered')
@@ -34,7 +36,7 @@ const Stock = () => {
   }
 
   /** Assume withdraw is not a sale; maintain cost basis. Assume that withdrawn funds stay under my custodianship and do not debit lot. Validates available purchases. */
-  const withdraw = (amount, cur, date, type = 'fifo') => {
+  const withdraw = (amount: number, cur: Ticker, date: DateString, type = 'fifo') => {
     let pending = amount
     const exchangeLots = []
 
@@ -85,7 +87,7 @@ const Stock = () => {
    *
    * @param price Updates the cost basis of the new lot. Gains are calculated from the original cost basis in the return value. If isLikekind, the cost basis is preserved.
    */
-  const trade = ({ sell, sellCur, buy, buyCur, date, price, isLikekind, type }) => {
+  const trade = ({ sell, sellCur, buy, buyCur, date, price, isLikekind, type }: Trade) => {
     type = type || 'fifo'
     let pending = sell
     const trades = []
@@ -115,7 +117,7 @@ const Stock = () => {
 
         // get the next lot with the sell currency
         // it will be either completely partially consumed in the trade (mutation)
-        lot = next(sellCur, type)
+        lot = next(sellCur!, type)
         if (!lot) {
           // If the sell currency is not in stock, then it means that the original purchase is missing.
           // Add buy currency to stock with zero cost basis to be conservative.
@@ -151,7 +153,7 @@ const Stock = () => {
       }
 
       // if the price is missing, we're purchasing a non-zero amount, and it is not a currency that is known to have missing prices, then throw an error
-      if (!price && buy && !currenciesWithMissingPrices[buyCur]) {
+      if (!price && buy && !currenciesWithMissingPrices.has(buyCur!)) {
         console.error('args', { sell, sellCur, buy, buyCur, date, price, isLikekind, type })
         console.error('lot', lot)
         throw new Error('Missing Price')
@@ -165,12 +167,12 @@ const Stock = () => {
       const buyPartial = buy * (sellPartial / sell)
 
       // set the cost basis of the new lot to the proportional cost at the new buy price
-      const costPartialNew = buyPartial * price
+      const costPartialNew = buyPartial * price!
 
       // add a new lot of the purchased currency
       const lotNew = {
         amount: buyPartial,
-        cur: buyCur,
+        cur: buyCur!,
         // give the new lot the old cost basis if like-kind exchange
         cost: isLikekind ? costPartial : costPartialNew,
         // transfer the deferred gains from the old lot to the new lot

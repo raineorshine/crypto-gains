@@ -1,21 +1,23 @@
+import Ticker from './Ticker.js'
+
 interface UniswapTrade {
   date: string
   from: {
     amount: string
     currency: {
-      symbol: string
+      symbol: Ticker
     }
   }
   to: {
     amount: string
     currency: {
-      symbol: string
+      symbol: Ticker
     }
   }
   fee: {
     amount: string
     currency: {
-      symbol: string
+      symbol: Ticker
     }
   }
   type: 'exchange' // eventually add other types

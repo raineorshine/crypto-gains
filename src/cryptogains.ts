@@ -303,7 +303,7 @@ const cryptogains = async (
       // must go before crypto-to-crypto trade
       else if (isCryptoPurchase(tx)) {
         cryptoPurchases.push(tx)
-        stock.deposit(+tx.Buy!, tx.CurBuy, +tx.Sell!, tx['Trade Date'])
+        stock.deposit(+tx.Buy!, tx.CurBuy!, +tx.Sell!, tx['Trade Date'])
       }
 
       // TRADE
@@ -335,7 +335,7 @@ const cryptogains = async (
           type: options.accounting,
         })
 
-        ;(isLikekind ? likeKindExchanges : sales).push(...trades)
+        ;(isLikekind ? likeKindExchanges : sales).push(...(trades as any))
       }
 
       // INCOME
@@ -345,7 +345,7 @@ const cryptogains = async (
         // update cost basis
         const p = tx.Price || (await tryPrice(tx, tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])))) || 0
 
-        stock.deposit(+tx.Buy!, tx.CurBuy, tx.Buy! * p, tx['Trade Date'])
+        stock.deposit(+tx.Buy!, tx.CurBuy!, tx.Buy! * p, tx['Trade Date'])
       }
 
       // DEPOSIT
@@ -384,7 +384,7 @@ const cryptogains = async (
       // SPEND
       else if (tx.Type === 'Spend') {
         withdrawals.push(tx)
-        stock.withdraw(+tx.Sell!, tx.CurSell, tx['Trade Date'], options.accounting)
+        stock.withdraw(+tx.Sell!, tx.CurSell!, tx['Trade Date'], options.accounting)
       }
 
       // UNKNOWN

@@ -1,7 +1,9 @@
+import Ticker from './Ticker.js'
+
 interface LedgerTrade {
   'Operation Date': string
   Status: 'Confirmed' | 'Unconfirmed' | 'Failed'
-  'Currency Ticker': string
+  'Currency Ticker': Ticker
   'Operation Type': 'IN' | 'OUT' | 'FEES' | 'WITHDRAW_UNBONDED' | 'DELEGATE' | 'UNDELEGATE'
   'Operation Amount': number
   'Operation Fees': number

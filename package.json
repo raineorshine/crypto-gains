@@ -12,7 +12,7 @@
   "license": "ISC",
   "scripts": {
     "build": "tsc",
-    "test": "mocha src",
+    "test": "mocha build/stock.test.js",
     "watch": "tsc --watch"
   },
   "type": "module",
