@@ -39,9 +39,6 @@ const groupByDay = (trades: CoinTrackingTrade[]) => {
 /** Get the day of the normalized date string. */
 const day = (date: string) => date.split(' ')[0]
 
-/** Convert a string value to a number and set '-' to 0. */
-const z = (v: string | number) => (v === '-' ? 0 : +v)
-
 // memoized price
 const mPrice = memoize('price').async(async (key: string): Promise<number | string> => {
   const { from, to, time, exchange } = JSON.parse(key)
@@ -85,17 +82,6 @@ const isCryptoToUsd = (trade: CoinTrackingTrade) =>
 
 const isUsdToCrypto = (trade: CoinTrackingTrade) => trade.Type === 'Trade' && trade.CurSell === 'USD'
 
-/** Checks if a withdrawal Sell amount is within a margin of error from a deposit's Buy amount. Ignores the withdrawal's Buy amount and deposit's Sell amount. */
-const closeEnough = (deposit: CoinTrackingTrade, tx: CoinTrackingTrade) => {
-  if (!deposit.Buy || !tx.Sell) return false
-  const errorRange = deposit.CurBuy === 'BTC' ? 0.2 : deposit.CurBuy === 'ETH' ? 0.2 : 0.5
-  return Math.abs(deposit.Buy - tx.Sell) < errorRange
-}
-
-/** Find a withdrawal in the given list of transactions that matches the given deposit. */
-const findMatchingWithdrawal = (deposit: CoinTrackingTrade, txs: CoinTrackingTrade[]) =>
-  txs.find(tx => tx.Type === 'Withdrawal' && deposit.CurBuy === tx.CurSell && closeEnough(deposit, tx))
-
 /** Convert airdropSymbols from array to object for O(1) lookup. */
 const airdropIndex = secure.airdropSymbols.reduce(
   (accum, cur) => ({
@@ -118,8 +104,6 @@ const cryptogains = async (
     likekind?: boolean
   } = {},
 ) => {
-  const matched: CoinTrackingTrade[] = []
-  const unmatched: CoinTrackingTrade[] = []
   const income: CoinTrackingTrade[] = []
   const cryptoToUsd: CoinTrackingTrade[] = []
   const usdToCrypto: CoinTrackingTrade[] = []
@@ -372,23 +356,13 @@ const cryptogains = async (
 
       // DEPOSIT
       else if (tx.Type === 'Deposit') {
-        // USD deposits have as-is cost basis
-        if (tx.CurBuy === 'USD') {
-          usdDeposits.push(tx)
-          stock.deposit(+tx.Buy!, 'USD', +tx.Buy!, tx['Trade Date'])
-        }
         // air drops have cost basis of 0
-        else if (tx.CurBuy && isAirdrop(tx.CurBuy)) {
+        if (tx.CurBuy && isAirdrop(tx.CurBuy)) {
           airdrops.push(tx)
           stock.deposit(+tx.Buy!, tx.CurBuy, 0, tx['Trade Date'])
         }
-        // try to match the deposit to a same-day withdrawal
-        else if (findMatchingWithdrawal(tx, dayGroup)) {
-          matched.push(tx)
-        }
         // SALT presale
         else if (tx.CurBuy === 'SALT' && tx['Trade Date'].includes('2017')) {
-          matched.push(tx)
           stock.deposit(+tx.Buy!, tx.CurBuy, tx.Buy! * 0.25, tx['Trade Date'])
         }
         // Forks have a cost basis of 0
@@ -397,43 +371,10 @@ const cryptogains = async (
           (tx.CurBuy === 'BCH' && tx['Trade Date'].includes('2017')) ||
           (tx.CurBuy === 'ETC' && tx['Trade Date'].includes('2016'))
         ) {
-          matched.push(tx)
           stock.deposit(+tx.Buy!, tx.CurBuy, 0, tx['Trade Date'])
         }
-        // otherwise we have an unmatched transaction and need to fallback to the day-of price
-        // and add it to the stock
-        else {
-          const p = tx.Price || (await tryPrice(tx, tx.CurBuy, 'USD', day(normalDate(tx['Trade Date']))))
-
-          // do not report missing stable coin purchases as warnings, since the cost basis is invariant
-          if (tx.CurBuy === 'USDT' || tx.CurBuy === 'USDC' || tx.CurBuy === 'DAI') {
-            matched.push(tx)
-          } else {
-            const message = `WARNING: No matching withdrawal for ${tx.Exchange} deposit of ${tx.Buy} ${tx.CurBuy} on ${tx['Trade Date']}. Using historical price of ${p}.`
-            log.verbose.warn(message)
-            noMatchingWithdrawals.push(message)
-
-            const newTx: CoinTrackingTrade = {
-              ...tx,
-              Type: 'Income',
-              Comment: 'Cost Basis',
-              Price: p,
-            }
-
-            unmatched.push(newTx)
-          }
-
-          if (!tx.Buy) {
-            console.error(tx, { p })
-            throw new Error('Missing tx.Buy')
-          }
-
-          // TODO: What if there is no price on this date? There is no way to determine the cost basis.
-          // For now, just skip it and a price error will be reported.
-          if (p) {
-            stock.deposit(+tx.Buy, tx.CurBuy, tx.Buy * p, tx['Trade Date'])
-          }
-        }
+        // Otherwise assume the deposit is an internal transfer.
+        // No need to change the stock or cost basis.
       }
 
       // WITHDRAWAL
@@ -454,8 +395,6 @@ const cryptogains = async (
   }
 
   return {
-    matched,
-    unmatched,
     income,
     cryptoToUsd,
     usdToCrypto,

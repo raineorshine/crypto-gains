@@ -154,8 +154,6 @@ const sum = (x: number, y: number): number => x + y
   const txs = await loadTrades(argv._[0] as string, argv.limit)
 
   const {
-    matched,
-    unmatched,
     income,
     cryptoToUsd,
     usdToCrypto,
@@ -183,8 +181,6 @@ const sum = (x: number, y: number): number => x + y
 
   const total =
     withdrawals.length +
-    matched.length +
-    unmatched.length +
     cryptoToUsd.length +
     usdToCrypto.length +
     airdrops.length +
@@ -195,8 +191,6 @@ const sum = (x: number, y: number): number => x + y
     interest.length
   log('')
   log('Withdrawals:', withdrawals.length)
-  log('Matched Deposits:', matched.length)
-  log('Unmatched Deposits:', unmatched.length)
   log('Crypto-to-USD:', cryptoToUsd.length)
   log('USD-to-Crypto:', usdToCrypto.length)
   log('USD Deposits:', usdDeposits.length)
