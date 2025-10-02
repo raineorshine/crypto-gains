@@ -170,6 +170,7 @@ const sum = (x: number, y: number): number => x + y
     noMatchingWithdrawals,
     priceErrors,
     zeroPrices,
+    stock,
   } = await cryptogains(txs, {
     ...argv,
     // narrow option types that yargs types too generically
@@ -212,6 +213,12 @@ const sum = (x: number, y: number): number => x + y
   log('Price errors:', priceErrors.length)
   log('Zero prices:', zeroPrices.length)
   log('')
+
+  log('STOCK (sample)')
+  const sampleSymbols = new Set(['BTC', 'ETH', 'LTC', 'SOL', 'UNI', 'AVAX'])
+  const stockMap = stock.all() as { [key: string]: number }
+  const stockFiltered = Object.fromEntries(Object.entries(stockMap).filter(([cur, amount]) => sampleSymbols.has(cur)))
+  log(stockFiltered)
 
   for (let y = 2016; y <= new Date().getFullYear(); y++) {
     outputByYear(y.toString(), salesWithGain, interest, likeKindExchanges)

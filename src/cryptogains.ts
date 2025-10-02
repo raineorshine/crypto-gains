@@ -469,6 +469,7 @@ const cryptogains = async (
     noMatchingWithdrawals,
     priceErrors,
     zeroPrices,
+    stock,
   }
 }
 
