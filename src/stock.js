@@ -124,9 +124,7 @@ const Stock = () => {
             costPartial = sell
           } else {
             console.error(
-              `trade: No available purchase for ${sell} ${sellCur} -> ${buy} ${buyCur} trade on ${date} (${
-                sell - pending
-              } ${sellCur} found)`,
+              `trade: No available purchase for ${sell} ${sellCur} -> ${buy} ${buyCur} trade on ${date}. Using zero cost basis.`,
             )
 
             costPartial = 0
