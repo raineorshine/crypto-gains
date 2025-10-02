@@ -1,3 +1,5 @@
+import isStableCoin from './util/isStableCoin'
+
 // known currencies that have missing prices
 const currenciesWithMissingPrices = {
   APPC: 1,
@@ -5,8 +7,6 @@ const currenciesWithMissingPrices = {
 }
 
 const closeEnough = (a, b) => Math.abs(a - b) <= 0.02
-
-const isStableCoin = cur => ['USDT', 'USDC', 'DAI', 'BUSD'].includes(cur)
 
 const Stock = () => {
   const lots = []
