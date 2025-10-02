@@ -81,7 +81,8 @@ const isCryptoToUsd = (trade: CoinTrackingTrade) =>
   (trade.Type === 'Trade' && trade.CurBuy === 'USD') ||
   (trade.Type === 'Spend' && trade.Exchange !== 'Ledger')
 
-const isUsdToCrypto = (trade: CoinTrackingTrade) => trade.Type === 'Trade' && isUsdEquivalent(trade.CurSell)
+/** Returns true if the trade is buying crypto with USD or a stable coin. */
+const isCryptoPurchase = (trade: CoinTrackingTrade) => trade.Type === 'Trade' && isUsdEquivalent(trade.CurSell)
 
 /** Convert airdropSymbols from array to object for O(1) lookup. */
 const airdropIndex = secure.airdropSymbols.reduce(
@@ -107,7 +108,7 @@ const cryptogains = async (
 ) => {
   const income: CoinTrackingTrade[] = []
   const cryptoToUsd: CoinTrackingTrade[] = []
-  const usdToCrypto: CoinTrackingTrade[] = []
+  const cryptoPurchases: CoinTrackingTrade[] = []
   const usdDeposits: CoinTrackingTrade[] = []
   const withdrawals: CoinTrackingTrade[] = []
   const margin: CoinTrackingTrade[] = []
@@ -308,8 +309,8 @@ const cryptogains = async (
 
       // usd-to-crypto
       // must go before crypto-to-crypto trade
-      else if (isUsdToCrypto(tx)) {
-        usdToCrypto.push(tx)
+      else if (isCryptoPurchase(tx)) {
+        cryptoPurchases.push(tx)
         stock.deposit(+tx.Buy!, tx.CurBuy, +tx.Sell!, tx['Trade Date'])
       }
 
@@ -398,7 +399,7 @@ const cryptogains = async (
   return {
     income,
     cryptoToUsd,
-    usdToCrypto,
+    cryptoPurchases,
     airdrops,
     usdDeposits,
     withdrawals,
