@@ -85,16 +85,6 @@ const isCryptoSale = (trade: CoinTrackingTrade) =>
 /** Returns true if the trade is buying crypto with USD or a stable coin. */
 const isCryptoPurchase = (trade: CoinTrackingTrade) => trade.Type === 'Trade' && isUsdEquivalent(trade.CurSell)
 
-/** Convert airdropSymbols from array to object for O(1) lookup. */
-const airdropIndex = airdropSymbols.reduce(
-  (accum, cur) => ({
-    ...accum,
-    [cur.toLowerCase()]: 1,
-  }),
-  {},
-)
-const isAirdrop = (symbol: string) => symbol.toLowerCase() in airdropIndex
-
 /**
  * Group transactions into several broad categories.
  * Match same-day withdrawals and deposits.
@@ -360,7 +350,7 @@ const cryptogains = async (
       // DEPOSIT
       else if (tx.Type === 'Deposit') {
         // air drops have cost basis of 0
-        if (tx.CurBuy && isAirdrop(tx.CurBuy)) {
+        if (tx.CurBuy && airdropSymbols.has(tx.CurBuy)) {
           airdrops.push(tx)
           stock.deposit(+tx.Buy!, tx.CurBuy, 0, tx['Trade Date'])
         }

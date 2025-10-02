@@ -1,4 +1,5 @@
-const airdropSymbols = [
+/** A set of airdropped altcoins. */
+const airdropSymbols = new Set([
   'A',
   'AFROX',
   'AIMS',
@@ -87,6 +88,6 @@ const airdropSymbols = [
   'XLAB',
   'XNN',
   'ZNT',
-]
+])
 
 export default airdropSymbols
