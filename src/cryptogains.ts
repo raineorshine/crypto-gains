@@ -391,7 +391,8 @@ const cryptogains = async (
           matched.push(tx)
           stock.deposit(+tx.Buy!, tx.CurBuy, tx.Buy! * 0.25, tx['Trade Date'])
         }
-        // Forks: BCH, ETC
+        // Forks have a cost basis of 0
+        // e.g. BCH, ETC
         else if (
           (tx.CurBuy === 'BCH' && tx['Trade Date'].includes('2017')) ||
           (tx.CurBuy === 'ETC' && tx['Trade Date'].includes('2016'))

@@ -171,6 +171,7 @@ const geminiTradeToCointracking = (trade: GeminiTrade): CoinTrackingTrade | null
   // ignore USDC/GUSD -> USD trades
   // ignore USDC Credit/Debit (i.e. Deposit/Widhtdrawal)
   if (
+    // TODO: Do not ignore BTC rewards
     trade.Specification.includes('Gemini Credit Card Reward Payout') ||
     trade.Symbol === 'USD' ||
     ((trade.Type === 'Buy' || trade.Type === 'Sell' || trade.Type === 'Debit' || trade.Type === 'Credit') &&
