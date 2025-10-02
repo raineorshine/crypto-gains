@@ -101,6 +101,7 @@ const cryptogains = async (
   const cryptoSales: CoinTrackingTrade[] = []
   const cryptoPurchases: CoinTrackingTrade[] = []
   const usdDeposits: CoinTrackingTrade[] = []
+  const deposits: CoinTrackingTrade[] = []
   const withdrawals: CoinTrackingTrade[] = []
   const margin: CoinTrackingTrade[] = []
   const tradeTxs: CoinTrackingTrade[] = []
@@ -356,6 +357,7 @@ const cryptogains = async (
         }
         // SALT presale
         else if (tx.CurBuy === 'SALT' && tx['Trade Date'].includes('2017')) {
+          deposits.push(tx)
           stock.deposit(+tx.Buy!, tx.CurBuy, tx.Buy! * 0.25, tx['Trade Date'])
         }
         // Forks have a cost basis of 0
@@ -364,10 +366,14 @@ const cryptogains = async (
           (tx.CurBuy === 'BCH' && tx['Trade Date'].includes('2017')) ||
           (tx.CurBuy === 'ETC' && tx['Trade Date'].includes('2016'))
         ) {
+          deposits.push(tx)
           stock.deposit(+tx.Buy!, tx.CurBuy, 0, tx['Trade Date'])
         }
         // Otherwise assume the deposit is an internal transfer.
         // No need to change the stock or cost basis.
+        else {
+          deposits.push(tx)
+        }
       }
 
       // WITHDRAWAL
@@ -377,6 +383,7 @@ const cryptogains = async (
 
       // SPEND
       else if (tx.Type === 'Spend') {
+        withdrawals.push(tx)
         stock.withdraw(+tx.Sell!, tx.CurSell, tx['Trade Date'], options.accounting)
       }
 
@@ -393,6 +400,7 @@ const cryptogains = async (
     cryptoPurchases,
     airdrops,
     usdDeposits,
+    deposits,
     withdrawals,
     tradeTxs,
     margin,
