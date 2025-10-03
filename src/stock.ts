@@ -1,21 +1,13 @@
 import fs from 'fs/promises'
 import DateString from './@types/DateString.js'
 import Lot from './@types/Lot.js'
+import SecureData from './@types/SecureData.js'
 import Ticker from './@types/Ticker.js'
 import Trade from './@types/Trade.js'
 import isStableCoin from './util/isStableCoin.js'
 
-const secure = JSON.parse(await fs.readFile(new URL('../data/secure.json', import.meta.url), 'utf-8')) as {
-  cryptoCompareApiKey: string
-  icos: {
-    Buy: string
-    CurBuy: Ticker
-    Sell: string
-    CurSell: Ticker
-    Date: string
-  }[]
-  fallbackPrice: { [key: string]: number }
-}
+const secure = JSON.parse(await fs.readFile(new URL('../data/secure.json', import.meta.url), 'utf-8')) as SecureData
+
 // known currencies that have missing prices
 const currenciesWithMissingPrices = new Set(['APPC', 'SNT'])
 

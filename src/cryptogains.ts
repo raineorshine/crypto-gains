@@ -3,6 +3,7 @@ import memoize from 'nano-persistent-memoizer'
 import fetch from 'node-fetch'
 import CoinTrackingTrade from './@types/CoinTrackingTrade.js'
 import Loan from './@types/Loan.js'
+import SecureData from './@types/SecureData.js'
 import Ticker from './@types/Ticker.js'
 import Transaction from './@types/Transaction.js'
 import log from './log.js'
@@ -11,17 +12,7 @@ import Stock from './stock.js'
 import airdropSymbols from './util/airdropSymbols.js'
 import isUsdEquivalent from './util/isUsdEquivalent.js'
 
-const secure = JSON.parse(await fs.readFile(new URL('../data/secure.json', import.meta.url), 'utf-8')) as {
-  cryptoCompareApiKey: string
-  icos: {
-    Buy: string
-    CurBuy: Ticker
-    Sell: string
-    CurSell: Ticker
-    Date: string
-  }[]
-  fallbackPrice: { [key: string]: number }
-}
+const secure = JSON.parse(await fs.readFile(new URL('../data/secure.json', import.meta.url), 'utf-8')) as SecureData
 
 const stock = Stock()
 
