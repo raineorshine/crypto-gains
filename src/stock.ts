@@ -11,8 +11,6 @@ const secure = JSON.parse(await fs.readFile(new URL('../data/secure.json', impor
 // known currencies that have missing prices
 const currenciesWithMissingPrices = new Set(['APPC', 'SNT'])
 
-const closeEnough = (a: number, b: number) => Math.abs(a - b) <= 0.02
-
 const Stock = () => {
   const lots: Lot[] = []
 
@@ -63,8 +61,7 @@ const Stock = () => {
         pending = 0
       }
       // lot has a larger supply than is needed
-      // lot is close enough
-      else if (lot.amount > pending || closeEnough(lot.amount, pending)) {
+      else if (lot.amount > pending) {
         lotDebit = pending
         cost = lot.cost * (pending / lot.amount)
         pending = 0
@@ -152,7 +149,7 @@ const Stock = () => {
           pending = 0
         }
         // lot has a larger supply than is needed
-        else if (lot.amount > pending || closeEnough(lot.amount, pending)) {
+        else if (lot.amount > pending) {
           sellPartial = pending
           costPartial = lot.cost * (sellPartial / lot.amount) // proportional cost of the amount that is taken from the lot
           lot.amount -= pending // debit sell amount from lot
@@ -197,13 +194,6 @@ const Stock = () => {
         date: lot && isLikekind ? lot.date : date,
       }
 
-      if (isNaN(lotNew.amount) || isNaN(lotNew.cost) || isNaN(buyPartial) || isNaN(sellPartial)) {
-        console.error('args', { sell, sellCur, buy, buyCur, date, price, isLikekind, type })
-        console.error('lot', lot)
-        console.error({ buy, sell, buyPartial, sellPartial, costPartial, costPartialNew })
-        throw new Error('trade: NaN encountered')
-      }
-
       // do not store new lot for crypto sale to USD
       // it would get ignored anyway
       if (buyCur !== 'USD') {
@@ -223,6 +213,23 @@ const Stock = () => {
         date, // include this even though it is an argument in order to make concatenated trades easier
         dateAcquired: lot ? lot.date : date,
       }
+
+      if (isNaN(lotNew.amount) || isNaN(lotNew.cost) || isNaN(buyPartial) || isNaN(sellPartial)) {
+        console.error({
+          args: { sell, sellCur, buy, buyCur, date, price, isLikekind, type },
+          lot,
+          tradeNew,
+        })
+        throw new Error('trade: NaN encountered')
+      } else if (costPartial < 0) {
+        console.error({
+          args: { sell, sellCur, buy, buyCur, date, price, isLikekind, type },
+          lot,
+          tradeNew,
+        })
+        throw new Error('trade: Negative cost encountered')
+      }
+
       trades.push(tradeNew)
     }
 
