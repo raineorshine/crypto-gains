@@ -98,6 +98,7 @@ const cryptogains = async (
   } = {},
 ) => {
   const income: CoinTrackingTrade[] = []
+  const rebates: CoinTrackingTrade[] = []
   const cryptoSales: CoinTrackingTrade[] = []
   const cryptoPurchases: CoinTrackingTrade[] = []
   const usdDeposits: CoinTrackingTrade[] = []
@@ -339,11 +340,36 @@ const cryptogains = async (
       }
 
       // INCOME
+      // Fetch price to determine cost basis and deposit to stock.
       else if (tx.Type === 'Income') {
         income.push(tx)
 
         // update cost basis
         const p = tx.Price || (await tryPrice(tx, tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])))) || 0
+
+        // A zero price could cause problems
+        // Luckily it seems quite rare
+        if (!p) {
+          zeroPrices.push(tx)
+        }
+
+        stock.deposit(+tx.Buy!, tx.CurBuy!, tx.Buy! * p, tx['Trade Date'])
+      }
+
+      // REBATE
+      // Fetch price to determine cost basis and deposit to stock.
+      // Credit card rewards are not considered taxable income. We just need to record the cost basis for future sales.
+      else if (tx.Type === 'Rebate') {
+        rebates.push(tx)
+
+        // update cost basis
+        const p = tx.Price || (await tryPrice(tx, tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])))) || 0
+
+        // A zero price could cause problems
+        // Luckily it seems quite rare
+        if (!p) {
+          zeroPrices.push(tx)
+        }
 
         stock.deposit(+tx.Buy!, tx.CurBuy!, tx.Buy! * p, tx['Trade Date'])
       }
@@ -396,6 +422,7 @@ const cryptogains = async (
 
   return {
     income,
+    rebates,
     cryptoSales,
     cryptoPurchases,
     airdrops,

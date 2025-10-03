@@ -1,7 +1,10 @@
 import Ticker from './Ticker.js'
 
 interface CoinTrackingTrade {
-  Type: 'Trade' | 'Deposit' | 'Withdrawal' | 'Spend' | 'Lost' | 'Income'
+  /** Trade type.
+   * Rebate - Credit card rewards are rebates and are not considered taxable income. If received in crypto, track the date and basis of the rewards so when you sell the coins, you can determine your overall gain/loss.
+   */
+  Type: 'Trade' | 'Deposit' | 'Withdrawal' | 'Spend' | 'Lost' | 'Income' | 'Rebate'
   /** The amount received either through a Trade, Deposit, or Withdrawal (unsigned). */
   Buy: number | null
   /** The ticker symbol of the Buy currency. */
