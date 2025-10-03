@@ -57,7 +57,6 @@ TOTAL: 10865 ✓
 
 ERRORS
 No available purchase: 3
-No matching withdrawals: 399
 Price errors: 0
 
 STOCK (sample)

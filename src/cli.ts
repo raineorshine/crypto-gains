@@ -167,7 +167,6 @@ const sum = (x: number, y: number): number => x + y
     sales,
     interest,
     likeKindExchanges,
-    noMatchingWithdrawals,
     priceErrors,
     zeroPrices,
     stock,
@@ -209,7 +208,6 @@ const sum = (x: number, y: number): number => x + y
   log('')
 
   log('ERRORS')
-  log('No matching withdrawals:', noMatchingWithdrawals.length)
   log('Price errors:', priceErrors.length)
   log('Zero prices:', zeroPrices.length)
   log('')

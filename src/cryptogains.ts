@@ -112,7 +112,6 @@ const cryptogains = async (
   const sales: Transaction[] = []
   const interest: Loan[] = [] // loan interest earned must be reported differently than sales
   const likeKindExchanges: Transaction[] = []
-  const noMatchingWithdrawals: string[] = []
   const priceErrors: CoinTrackingTrade[] = []
   const zeroPrices: CoinTrackingTrade[] = []
 
@@ -426,7 +425,6 @@ const cryptogains = async (
     sales,
     interest,
     likeKindExchanges,
-    noMatchingWithdrawals,
     priceErrors,
     zeroPrices,
     stock,
