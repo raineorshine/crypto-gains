@@ -32,7 +32,7 @@ const groupByDay = (trades: CoinTrackingTrade[]) => {
 /** Get the day of the normalized date string. */
 const day = (date: string) => date.split(' ')[0]
 
-// memoized price
+/** Fetches the price from the cryptocompare API using { from, to, time, exchange } embedded in the given key. Must take a single string argument as input to use as the memoizaton key. Persists the memoized value to a file in ./.nano-persisten-memoizer. */
 const mPrice = memoize('price').async(async (key: string): Promise<number | string> => {
   const { from, to, time, exchange } = JSON.parse(key)
 

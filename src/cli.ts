@@ -196,7 +196,7 @@ const sum = (x: number, y: number): number => x + y
   log('')
   log('Deposits:', deposits.length)
   log('Withdrawals:', withdrawals.length)
-  log('Crypto sale:', cryptoSales.length)
+  log('Crypto sales:', cryptoSales.length)
   log('Crypto purchases:', cryptoPurchases.length)
   log('USD Deposits:', usdDeposits.length)
   log('Airdrops', airdrops.length)
@@ -219,6 +219,7 @@ const sum = (x: number, y: number): number => x + y
   const stockMap = stock.all() as { [key: string]: number }
   const stockFiltered = Object.fromEntries(Object.entries(stockMap).filter(([cur, amount]) => sampleSymbols.has(cur)))
   log(stockFiltered)
+  log('')
 
   for (let y = 2016; y <= new Date().getFullYear(); y++) {
     outputByYear(y.toString(), salesWithGain, interest, likeKindExchanges)
