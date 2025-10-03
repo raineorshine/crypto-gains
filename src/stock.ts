@@ -1,9 +1,21 @@
+import fs from 'fs/promises'
 import DateString from './@types/DateString.js'
 import Lot from './@types/Lot.js'
 import Ticker from './@types/Ticker.js'
 import Trade from './@types/Trade.js'
 import isStableCoin from './util/isStableCoin.js'
 
+const secure = JSON.parse(await fs.readFile(new URL('../data/secure.json', import.meta.url), 'utf-8')) as {
+  cryptoCompareApiKey: string
+  icos: {
+    Buy: string
+    CurBuy: Ticker
+    Sell: string
+    CurSell: Ticker
+    Date: string
+  }[]
+  fallbackPrice: { [key: string]: number }
+}
 // known currencies that have missing prices
 const currenciesWithMissingPrices = new Set(['APPC', 'SNT'])
 
@@ -89,18 +101,22 @@ const Stock = () => {
    */
   const trade = ({ sell, sellCur, buy, buyCur, date, price, isLikekind, type }: Trade) => {
     type = type || 'fifo'
+
+    /** The quantity of sellCur remaining before the next matching lot is identified. */
     let pending = sell
+
     const trades = []
+
     while (pending > 0) {
       // next lot with the sell currency
-      let lot
+      let lot: Lot | undefined
 
       // amount of sell currency to debit from lot
-      let sellPartial
+      let sellPartial: number
 
       // cost in USD of the currency sold
-      // i.e. proportional cost of the amount that is taken from the lot
-      let costPartial
+      // i.e. proportional cost of the amount that is taken from the lot, or price * sellPartial
+      let costPartial: number
 
       // USD sale (i.e. crypto purchase): do not track USD in stock since it is the basis
       if (sellCur === 'USD') {
@@ -120,16 +136,24 @@ const Stock = () => {
         lot = next(sellCur!, type)
         if (!lot) {
           // If the sell currency is not in stock, then it means that the original purchase is missing.
-          // Add buy currency to stock with zero cost basis to be conservative.
+          // Add buy currency to stock with fallback price or zero to be conservative.
           // Make an exception for sold stable coins, since they are not speculative and should always have a cost basis essentially equal to the sale price
           if (buyCur === 'USD' && isStableCoin(sellCur)) {
             costPartial = sell
+          } else if (!sellCur) {
+            console.error({ sell, sellCur, buy, buyCur, date, price, isLikekind, type })
+            throw new Error('Missing sellCur')
           } else {
+            const fallbackPrice = secure.fallbackPrice[sellCur] ?? 0
             console.error(
-              `trade: No available purchase for ${sell} ${sellCur} -> ${buy} ${buyCur} trade on ${date}. Using zero cost basis.`,
+              `trade: Missing cost basis for ${sell} ${sellCur} -> ${buy} ${buyCur} trade on ${date}. ${
+                sellCur in secure.fallbackPrice
+                  ? 'Using fallback price of ' + fallbackPrice
+                  : 'No fallback price, so using 0.'
+              }`,
             )
 
-            costPartial = 0
+            costPartial = fallbackPrice * pending
           }
 
           sellPartial = pending

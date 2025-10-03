@@ -7,9 +7,10 @@
       "Sell": "10",
       "CurSell": "ETH",
       "Date": "20.06.2017 17:10"
-    },
+    }
   ],
-  "airdropSymbols": [
-    "HuobiAir"
-  ]
+  "fallbackPrice": {
+    "BTC": 400,
+    "ETH": 40
+  }
 }

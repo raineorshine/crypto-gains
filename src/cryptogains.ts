@@ -20,6 +20,7 @@ const secure = JSON.parse(await fs.readFile(new URL('../data/secure.json', impor
     CurSell: Ticker
     Date: string
   }[]
+  fallbackPrice: { [key: string]: number }
 }
 
 const stock = Stock()

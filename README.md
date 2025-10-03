@@ -19,6 +19,19 @@ Historical prices provided by the [cryptocompare API](https://min-api.cryptocomp
 1. Clone the repo.
 2. Rename sample-secure.json to secure.json and add valid API keys, icos (optional), and airdrop tokens to ignore (optional)
 
+### Fallback Price
+
+You can define a fallback price to use on trades that have a missing cost basis. This can occur if there are any missing transactions in the trade history such as an internal transfer to a different wallet, a bridget token, or an unrecorded trade on a defi exchange.
+
+Choose the lowest plausible price to avoid undercalculating gains and underpaying taxes. For example, the price of the asset when you first started trading. This could be way off the actual cost basis in which case you will overpay, but at least it is better than a zero cost basis.
+
+```json
+  "fallbackPrice": {
+    "BTC": 400,
+    "ETH": 40
+  }
+```
+
 ## Options
 
 ```sh
