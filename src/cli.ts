@@ -213,7 +213,7 @@ const sum = (x: number, y: number): number => x + y
   log('')
 
   log('STOCK (sample)')
-  const sampleSymbols = new Set(['BTC', 'ETH', 'LTC', 'SOL', 'UNI', 'AVAX'])
+  const sampleSymbols = new Set(['BTC', 'ETH'])
   const stockMap = stock.all() as { [key: string]: number }
   const stockFiltered = Object.fromEntries(Object.entries(stockMap).filter(([cur, amount]) => sampleSymbols.has(cur)))
   log(stockFiltered)
