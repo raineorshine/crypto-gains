@@ -91,16 +91,27 @@ const ledgerColumns = [
 /** Extracts the from/to pair of currencies from a given trading pair symbol. The 'from' value always represents the crypto token (regardless of Buy or Sell) while the 'to' value always represents the fiat token. That is, 'from' -> 'to' refers to the tickers if 'from' is sold in exchange for 'to'. */
 const pairMap = new Map<string, TradingPair>([
   ['BATUSD', { from: 'BAT', to: 'USD' } as const],
+  // Deposit/Withdraw AVAX (not really trading for USD)
+  ['AVAX', { from: 'AVAX', to: 'USD' } as const],
   ['AVAXUSD', { from: 'AVAX', to: 'USD' } as const],
   ['DAIUSD', { from: 'DAI', to: 'USD' } as const],
   ['EOSUSD', { from: 'EOS', to: 'USD' } as const],
+  // Deposit/Withdraw LTC (not really trading for USD)
+  ['LTC', { from: 'LTC', to: 'USD' } as const],
+  ['LTCBTC', { from: 'LTC', to: 'BTC' } as const],
+  ['LTCUSD', { from: 'LTC', to: 'USD' } as const],
   ['GNOUSD', { from: 'GNO', to: 'USD' } as const],
   ['GNOUSD', { from: 'GNO', to: 'USD' } as const],
   ['MATICUSD', { from: 'MATIC', to: 'USD' } as const],
+  // Deposit/Withdraw SOL (not really trading for USD)
+  ['SOL', { from: 'SOL', to: 'USD' } as const],
   ['SOLUSD', { from: 'SOL', to: 'USD' } as const],
+  ['SOLBTC', { from: 'SOL', to: 'BTC' } as const],
   ['UNIUSD', { from: 'UNI', to: 'USD' } as const],
   ['GUSD', {}],
   ['GUSDUSD', {}],
+  // Deposit/Withdraw UNI (not really trading for USD)
+  ['UNI', { from: 'UNI', to: 'USD' } as const],
   ['USD', {}],
   ['USDC', {}],
   ['USDCUSD', {}],
@@ -120,7 +131,7 @@ const pairMap = new Map<string, TradingPair>([
 const pair = (p: string): TradingPair => {
   const symbols = pairMap.get(p)
   if (!symbols) {
-    error(`Unrecognized trading pair: ${p}`)
+    error(`Unrecognized trading pair: ${p}. Add to pairMap in src/loadTrades.ts.`)
   }
   return symbols!
 }

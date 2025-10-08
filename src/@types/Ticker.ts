@@ -8,6 +8,7 @@ type Ticker =
   | 'EOS'
   | 'ETC'
   | 'ETH'
+  | 'LTC'
   | 'GNO'
   | 'MATIC'
   | 'SALT'
