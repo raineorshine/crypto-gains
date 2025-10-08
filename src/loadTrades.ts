@@ -11,6 +11,7 @@ import error from './error.js'
 import log from './log.js'
 import nonNull from './nonNull.js'
 import normalDate from './normalDate.js'
+import tradeDate from './util/tradeDate.js'
 
 const allowedCsvFormats = ['CoinTracking', 'Gemini', 'Kraken', 'Ledger Operation History']
 
@@ -156,13 +157,6 @@ const krakenTradeToCointracking = (trade: KrakenTrade): CoinTrackingTrade | null
   // ignore USDC/GUSD -> USD trades
   if ((trade.type === 'buy' || trade.type === 'sell') && !from && !to) return null
 
-  const date = new Date(trade.time)
-  const days = date.getDate().toString().padStart(2, '0')
-  const month = (date.getMonth() + 1).toString().padStart(2, '0')
-  const year = date.getFullYear()
-  const hours = date.getHours().toString().padStart(2, '0')
-  const minutes = date.getMinutes().toString().padStart(2, '0')
-
   return {
     Type:
       trade.type === 'buy' || trade.type === 'sell'
@@ -173,7 +167,7 @@ const krakenTradeToCointracking = (trade: KrakenTrade): CoinTrackingTrade | null
     Sell: trade.type === 'sell' ? +trade.cost / trade.price : +trade.cost,
     CurSell: trade.type === 'sell' ? from : 'USD',
     Exchange: 'Kraken',
-    'Trade Date': `${days}.${month}.${year} ${hours}:${minutes}`,
+    'Trade Date': tradeDate(trade.time),
     // Use Kraken-provided price
     // Not part of Cointracking data schema
     Price: +trade.price,
@@ -221,8 +215,6 @@ const geminiTradeToCointracking = (trade: GeminiTrade): CoinTrackingTrade | null
   // Except Debits (withdrawals) which are not trades and price can be set to 0
   const price = trade.Type === 'Debit' && buyAmount === 0 ? 0 : cost / buyAmount
 
-  const [year, month, day] = trade.Date.split('-')
-
   // price is required for Buy/Sell/Credit so that we calculate the correct cost basis
   if (trade.Type === 'Sell' && cost === 0 && buyAmount < 1) {
     if (buyAmount > 1) {
@@ -252,7 +244,7 @@ const geminiTradeToCointracking = (trade: GeminiTrade): CoinTrackingTrade | null
     Sell: trade.Type === 'Sell' ? cost / price : cost,
     CurSell: trade.Type === 'Sell' ? from : 'USD',
     Exchange: 'Gemini',
-    'Trade Date': `${day}.${month}.${year} ${trade['Time (UTC)']}`,
+    'Trade Date': tradeDate(trade.Date),
     Price: price,
   }
 }
@@ -266,13 +258,6 @@ const uniswapTradeToCointracking = (trade: UniswapTrade): CoinTrackingTrade | nu
   const buyAmount = parseFloat(trade.to.amount || '0')
   const sellAmount = parseFloat(trade.from.amount || '0')
 
-  const date = new Date(trade.date)
-  const days = date.getDate().toString().padStart(2, '0')
-  const month = (date.getMonth() + 1).toString().padStart(2, '0')
-  const year = date.getFullYear()
-  const hours = date.getHours().toString().padStart(2, '0')
-  const minutes = date.getMinutes().toString().padStart(2, '0')
-
   return {
     Type: 'Trade',
     Buy: buyAmount,
@@ -280,20 +265,13 @@ const uniswapTradeToCointracking = (trade: UniswapTrade): CoinTrackingTrade | nu
     Sell: sellAmount,
     CurSell: trade.from.currency.symbol,
     Exchange: 'Uniswap',
-    'Trade Date': `${days}.${month}.${year} ${hours}:${minutes}`,
+    'Trade Date': tradeDate(trade.date),
     Price: sellAmount / buyAmount,
   }
 }
 
 /** Converts a transaction from the Ledger Live operations history to the Cointracking schema. Records deposits and withdrawals. */
 const ledgerTradeToCointracking = (trade: LedgerTrade): CoinTrackingTrade | null => {
-  const date = new Date(trade['Operation Date'])
-  const days = date.getDate().toString().padStart(2, '0')
-  const month = (date.getMonth() + 1).toString().padStart(2, '0')
-  const year = date.getFullYear()
-  const hours = date.getHours().toString().padStart(2, '0')
-  const minutes = date.getMinutes().toString().padStart(2, '0')
-
   const isDeposit = trade['Operation Type'] === 'IN' || trade['Operation Type'] === 'UNDELEGATE'
   const isWithdrawal =
     trade['Operation Type'] === 'OUT' ||
@@ -315,7 +293,7 @@ const ledgerTradeToCointracking = (trade: LedgerTrade): CoinTrackingTrade | null
     Sell: isWithdrawal ? +trade['Operation Amount'] : null,
     CurSell: isWithdrawal ? trade['Currency Ticker'] : undefined,
     Exchange: 'Ledger',
-    'Trade Date': `${days}.${month}.${year} ${hours}:${minutes}`,
+    'Trade Date': tradeDate(trade['Operation Date']),
     Fee: trade['Operation Type'] === 'FEES' ? trade['Operation Amount'].toString() : undefined,
   }
 }
