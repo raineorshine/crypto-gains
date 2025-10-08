@@ -155,6 +155,14 @@ const krakenTradeToCointracking = (trade: KrakenTrade): CoinTrackingTrade | null
   const { from, to } = pair(trade.pair)!
   // ignore USDC/GUSD -> USD trades
   if ((trade.type === 'buy' || trade.type === 'sell') && !from && !to) return null
+
+  const date = new Date(trade.time)
+  const days = date.getDate().toString().padStart(2, '0')
+  const month = (date.getMonth() + 1).toString().padStart(2, '0')
+  const year = date.getFullYear()
+  const hours = date.getHours().toString().padStart(2, '0')
+  const minutes = date.getMinutes().toString().padStart(2, '0')
+
   return {
     Type:
       trade.type === 'buy' || trade.type === 'sell'
@@ -165,7 +173,7 @@ const krakenTradeToCointracking = (trade: KrakenTrade): CoinTrackingTrade | null
     Sell: trade.type === 'sell' ? +trade.cost / trade.price : +trade.cost,
     CurSell: trade.type === 'sell' ? from : 'USD',
     Exchange: 'Kraken',
-    'Trade Date': trade.time,
+    'Trade Date': `${days}.${month}.${year} ${hours}:${minutes}`,
     // Use Kraken-provided price
     // Not part of Cointracking data schema
     Price: +trade.price,
