@@ -4,6 +4,7 @@ import Lot from './@types/Lot.js'
 import SecureData from './@types/SecureData.js'
 import Ticker from './@types/Ticker.js'
 import Trade from './@types/Trade.js'
+import normalDate from './normalDate.js'
 import isStableCoin from './util/isStableCoin.js'
 
 const secure = JSON.parse(await fs.readFile(new URL('../data/secure.json', import.meta.url), 'utf-8')) as SecureData
@@ -136,7 +137,7 @@ const Stock = () => {
           } else {
             const fallbackPrice = secure.fallbackPrice[sellCur] ?? 0
             console.error(
-              `trade: Missing cost basis for ${sell} ${sellCur} -> ${buy} ${buyCur} trade on ${date}. ${
+              `${normalDate(date)}: Missing cost basis for trade ${sell} ${sellCur} -> ${buy} ${buyCur}. ${
                 sellCur in secure.fallbackPrice
                   ? 'Using fallback price of ' + fallbackPrice
                   : 'No fallback price, so using 0.'
