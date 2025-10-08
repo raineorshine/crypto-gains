@@ -174,6 +174,7 @@ const sum = (x: number, y: number): number => x + y
     ...argv,
     // narrow option types that yargs types too generically
     accounting: argv.accounting as 'fifo' | 'lifo' | undefined,
+    trace: argv.trace?.toUpperCase(),
   })
 
   // sale.buy is the USD acquired from the trade ("buy" USD)

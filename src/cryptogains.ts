@@ -87,6 +87,7 @@ const cryptogains = async (
   options: {
     accounting?: 'fifo' | 'lifo'
     likekind?: boolean
+    trace?: string
   } = {},
 ) => {
   const income: CoinTrackingTrade[] = []
@@ -154,6 +155,13 @@ const cryptogains = async (
     // loop through each of the day's transactions
     for (let i in dayGroup) {
       const tx = dayGroup[i]
+
+      const traced = options.trace && (options.trace === tx.CurBuy || options.trace === tx.CurSell)
+
+      // trace
+      if (traced) {
+        log(`\nTRACE ${options.trace}`, 'tx', JSON.stringify(tx))
+      }
 
       // convert ICO's to Trade
       // the matching withdrawal of CurSell can be ignored since it does no affect cost basis
@@ -253,18 +261,23 @@ const cryptogains = async (
         // update cost basis
         // Trade to USD
         if (tx.Type === 'Trade') {
-          sales.push(
-            ...stock.trade({
-              isLikekind: undefined,
-              sell: +tx.Sell!,
-              sellCur: tx.CurSell,
-              buy: +tx.Buy!,
-              buyCur: 'USD',
-              date: tx['Trade Date'],
-              price: undefined,
-              type: options.accounting,
-            }),
-          )
+          const trades = stock.trade({
+            isLikekind: undefined,
+            sell: +tx.Sell!,
+            sellCur: tx.CurSell,
+            buy: +tx.Buy!,
+            buyCur: 'USD',
+            date: tx['Trade Date'],
+            price: undefined,
+            type: options.accounting,
+          })
+          sales.push(...trades)
+
+          // trace
+          if (traced) {
+            log(`TRACE ${options.trace} sale`, trades)
+            log(`TRACE ${options.trace} balance`, stock.balance(options.trace as Ticker))
+          }
         }
         // Shift: we have to calculate the historical USD sale value since Coinbase only provides the token price
         else {
@@ -296,6 +309,12 @@ const cryptogains = async (
       else if (isCryptoPurchase(tx)) {
         cryptoPurchases.push(tx)
         stock.deposit(+tx.Buy!, tx.CurBuy!, +tx.Sell!, tx['Trade Date'])
+
+        // trace
+        if (traced) {
+          log(`TRACE ${options.trace} purchase`, tx.Buy)
+          log(`TRACE ${options.trace} balance`, stock.balance(options.trace as Ticker))
+        }
       }
 
       // TRADE
@@ -328,6 +347,12 @@ const cryptogains = async (
         })
 
         ;(isLikekind ? likeKindExchanges : sales).push(...(trades as any))
+
+        // trace
+        if (traced) {
+          log(`TRACE ${tx.CurSell} -> ${tx.CurBuy} trade`, trades)
+          log(`TRACE ${options.trace} balance`, stock.balance(options.trace as Ticker))
+        }
       }
 
       // INCOME
@@ -391,11 +416,23 @@ const cryptogains = async (
         else {
           deposits.push(tx)
         }
+
+        // trace
+        if (traced) {
+          log(`TRACE ${options.trace} deposit`, tx.Buy)
+          log(`TRACE ${options.trace} balance`, stock.balance(options.trace as Ticker))
+        }
       }
 
       // WITHDRAWAL
       else if (tx.Type === 'Withdrawal') {
         withdrawals.push(tx)
+
+        // trace
+        if (traced) {
+          log(`TRACE ${options.trace} withdrawal`, tx.Sell)
+          log(`TRACE ${options.trace} balance`, stock.balance(options.trace as Ticker))
+        }
       }
 
       // SPEND

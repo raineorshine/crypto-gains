@@ -22,9 +22,10 @@ const Stock = () => {
       }),
       {},
     )
-  const balance = (cur: Ticker) => lots.filter(lot => lot.cur === cur).reduce((prev, item) => prev + item.amount, 0)
+  const balance = (cur: Ticker) =>
+    lots.filter(lot => lot.cur.toUpperCase() === cur.toUpperCase()).reduce((prev, item) => prev + item.amount, 0)
   const next = (cur: Ticker, type = 'fifo') =>
-    (type === 'fifo' ? lots : lots.slice().reverse()).find(lot => lot.cur === cur)
+    (type === 'fifo' ? lots : lots.slice().reverse()).find(lot => lot.cur.toUpperCase() === cur.toUpperCase())
   const remove = (lot: Lot) => lots.splice(lots.indexOf(lot), 1)
   const deposit = (amount: number, cur: Ticker, cost: number, date: DateString) => {
     if (isNaN(amount) || isNaN(cost)) {
@@ -38,12 +39,12 @@ const Stock = () => {
   }
 
   /** Assume withdraw is not a sale; maintain cost basis. Assume that withdrawn funds stay under my custodianship and do not debit lot. Validates available purchases. */
-  const withdraw = (amount: number, cur: Ticker, date: DateString, type = 'fifo') => {
+  const withdraw = (amount: number, cur: Ticker | undefined, date: DateString, type = 'fifo') => {
     let pending = amount
     const exchangeLots = []
 
     // get all lots of the withdawal currency
-    const curLots = lots.filter(lot => lot.cur === cur)
+    const curLots = lots.filter(lot => lot.cur.toUpperCase() === cur?.toUpperCase())
     let i = type === 'fifo' ? 0 : curLots.length - 1
 
     while (pending > 0) {
