@@ -28,8 +28,8 @@ const normalDate = (d: string): string => `${d.slice(6, 10)}-${d.slice(3, 5)}-${
 
 /** Return true if the sale date is over a year from the acquisision date. */
 const isShortTerm = (sale: Transaction): boolean => {
-  const buyTime = new Date(normalDate(sale.dateAcquired)).getTime()
-  const saleTime = new Date(normalDate(sale.date)).getTime()
+  const buyTime = sale.dateAcquired.getTime()
+  const saleTime = sale.date.getTime()
   return saleTime - buyTime < 3.154e10
 }
 
@@ -49,7 +49,7 @@ const sum = (x: number, y: number): number => x + y
 
 ;(async () => {
   const outputByYear = async (
-    year: string,
+    year: number,
     sales: TransactionWithGain[],
     interest: Loan[],
     likeKindExchanges: Transaction[],
@@ -57,10 +57,10 @@ const sum = (x: number, y: number): number => x + y
     const stSales = sales.filter(isShortTerm)
     const ltSales = sales.filter(sale => !isShortTerm(sale))
 
-    const stSalesYear = stSales.filter(sale => sale.date.includes(year))
-    const ltSalesYear = ltSales.filter(sale => sale.date.includes(year))
-    const interestYear = interest.filter(tx => tx.date.includes(year.toString()))
-    const likeKindExchangesYear = likeKindExchanges.filter((tx: Transaction) => tx.date.includes(year))
+    const stSalesYear = stSales.filter(sale => sale.date.getFullYear() === year)
+    const ltSalesYear = ltSales.filter(sale => sale.date.getFullYear() === year)
+    const interestYear = interest.filter(tx => tx.date.getFullYear() === year)
+    const likeKindExchangesYear = likeKindExchanges.filter((tx: Transaction) => tx.date.getFullYear() === year)
 
     const hasTrades =
       stSalesYear.length > 0 || ltSalesYear.length > 0 || likeKindExchangesYear.length > 0 || interestYear.length > 0
@@ -224,6 +224,6 @@ const sum = (x: number, y: number): number => x + y
   log('')
 
   for (let y = 2016; y <= new Date().getFullYear(); y++) {
-    outputByYear(y.toString(), salesWithGain, interest, likeKindExchanges)
+    outputByYear(y, salesWithGain, interest, likeKindExchanges)
   }
 })()

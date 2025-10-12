@@ -2,8 +2,8 @@ interface Transaction {
   buy?: number
   buyCur?: string
   cost: number
-  date: string
-  dateAcquired: string
+  date: Date
+  dateAcquired: Date
   deferredGains?: number
   sell?: number
   sellCur?: string

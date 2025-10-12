@@ -7,6 +7,7 @@ interface SecureData {
     CurBuy: Ticker
     Sell: string
     CurSell: Ticker
+    // dd.mm.yyyy
     Date: string
   }[]
   /** See README. */

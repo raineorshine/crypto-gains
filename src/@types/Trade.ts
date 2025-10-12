@@ -1,4 +1,3 @@
-import DateString from './DateString.js'
 import Ticker from './Ticker.js'
 
 interface Trade {
@@ -6,7 +5,7 @@ interface Trade {
   sellCur?: Ticker
   buy: number
   buyCur?: Ticker
-  date: DateString
+  date: Date
   price?: number
   isLikekind?: boolean
   type?: 'fifo' | 'lifo'

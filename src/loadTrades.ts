@@ -11,12 +11,11 @@ import error from './error.js'
 import log from './log.js'
 import nonNull from './nonNull.js'
 import normalDate from './normalDate.js'
-import tradeDate from './util/tradeDate.js'
 
 const allowedCsvFormats = ['CoinTracking', 'Gemini', 'Kraken', 'Ledger Operation History']
 
 // Corresponding type: CoinTrackingTrade
-const cointrackingColumns: (keyof CoinTrackingTrade | 'Cur.')[] = [
+const cointrackingColumns: (keyof CoinTrackingTrade | 'Cur.' | 'Trade Date')[] = [
   'Type',
   'Buy',
   'Cur.',
@@ -167,10 +166,10 @@ const krakenTradeToCointracking = (trade: KrakenTrade): CoinTrackingTrade | null
     Sell: trade.type === 'sell' ? +trade.cost / trade.price : +trade.cost,
     CurSell: trade.type === 'sell' ? from : 'USD',
     Exchange: 'Kraken',
-    'Trade Date': tradeDate(trade.time),
     // Use Kraken-provided price
     // Not part of Cointracking data schema
     Price: +trade.price,
+    date: new Date(trade.time),
   }
 }
 
@@ -244,8 +243,8 @@ const geminiTradeToCointracking = (trade: GeminiTrade): CoinTrackingTrade | null
     Sell: trade.Type === 'Sell' ? cost / price : cost,
     CurSell: trade.Type === 'Sell' ? from : 'USD',
     Exchange: 'Gemini',
-    'Trade Date': tradeDate(trade.Date),
     Price: price,
+    date: new Date(trade.Date),
   }
 }
 
@@ -265,8 +264,8 @@ const uniswapTradeToCointracking = (trade: UniswapTrade): CoinTrackingTrade | nu
     Sell: sellAmount,
     CurSell: trade.from.currency.symbol,
     Exchange: 'Uniswap',
-    'Trade Date': tradeDate(trade.date),
     Price: sellAmount / buyAmount,
+    date: new Date(trade.date),
   }
 }
 
@@ -293,8 +292,8 @@ const ledgerTradeToCointracking = (trade: LedgerTrade): CoinTrackingTrade | null
     Sell: isWithdrawal ? +trade['Operation Amount'] : null,
     CurSell: isWithdrawal ? trade['Currency Ticker'] : undefined,
     Exchange: 'Ledger',
-    'Trade Date': tradeDate(trade['Operation Date']),
     Fee: trade['Operation Type'] === 'FEES' ? trade['Operation Amount'].toString() : undefined,
+    date: new Date(trade['Operation Date']),
   }
 }
 
@@ -325,7 +324,13 @@ const loadTradeHistoryFile = async (file: string | null): Promise<CoinTrackingTr
 
         // CoinTracking
         if (cointrackingColumns.every(col => headerColumns.includes(col))) {
-          const trades = (await csvtojson().fromString(fixCointrackingHeader(text))) as CoinTrackingTrade[]
+          const trades = (await csvtojson().fromString(fixCointrackingHeader(text))).map(trade => {
+            const { 'Trade Date': _, ...tradeWithDate } = trade
+            return {
+              ...tradeWithDate,
+              date: new Date(normalDate(trade['Trade Date'])),
+            }
+          }) as CoinTrackingTrade[]
           log.verbose(`  ${filename} [CoinTracking]: ${trades.length} trades`)
           return trades
         }
@@ -442,13 +447,7 @@ const loadTrades = async (inputPath: string, limit?: number): Promise<CoinTracki
   log.verbose('')
 
   // return trades sorted by date
-  return trades
-    .sort((a, b) => {
-      const dateA = new Date(normalDate(a['Trade Date']))
-      const dateB = new Date(normalDate(b['Trade Date']))
-      return dateA === dateB ? 0 : dateA < dateB ? -1 : 1
-    })
-    .slice(0, limit)
+  return trades.sort((a, b) => (a.date === b.date ? 0 : a.date < b.date ? -1 : 1)).slice(0, limit)
 }
 
 export default loadTrades

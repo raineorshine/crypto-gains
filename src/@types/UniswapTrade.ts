@@ -1,6 +1,7 @@
 import Ticker from './Ticker.js'
 
 interface UniswapTrade {
+  // ISOString
   date: string
   from: {
     amount: string

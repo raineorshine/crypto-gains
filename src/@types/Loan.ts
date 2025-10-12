@@ -1,5 +1,5 @@
 interface Loan {
-  date: string
+  date: Date
   loanAmount: number
   loanCurrency: string
   interestEarnedUSD: number

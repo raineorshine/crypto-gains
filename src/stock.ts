@@ -1,10 +1,8 @@
 import fs from 'fs/promises'
-import DateString from './@types/DateString.js'
 import Lot from './@types/Lot.js'
 import SecureData from './@types/SecureData.js'
 import Ticker from './@types/Ticker.js'
 import Trade from './@types/Trade.js'
-import normalDate from './normalDate.js'
 import isStableCoin from './util/isStableCoin.js'
 
 const secure = JSON.parse(await fs.readFile(new URL('../data/secure.json', import.meta.url), 'utf-8')) as SecureData
@@ -28,7 +26,7 @@ const Stock = () => {
   const next = (cur: Ticker, type = 'fifo') =>
     (type === 'fifo' ? lots : lots.slice().reverse()).find(lot => lot.cur.toUpperCase() === cur.toUpperCase())
   const remove = (lot: Lot) => lots.splice(lots.indexOf(lot), 1)
-  const deposit = (amount: number, cur: Ticker, cost: number, date: DateString) => {
+  const deposit = (amount: number, cur: Ticker, cost: number, date: Date) => {
     if (isNaN(amount) || isNaN(cost)) {
       console.error({ amount, cur, cost, date })
       throw new Error('deposit: NaN encountered')
@@ -40,7 +38,7 @@ const Stock = () => {
   }
 
   /** Assume withdraw is not a sale; maintain cost basis. Assume that withdrawn funds stay under my custodianship and do not debit lot. Validates available purchases. */
-  const withdraw = (amount: number, cur: Ticker | undefined, date: DateString, type = 'fifo') => {
+  const withdraw = (amount: number, cur: Ticker | undefined, date: Date, type = 'fifo') => {
     let pending = amount
     const exchangeLots = []
 
@@ -55,7 +53,9 @@ const Stock = () => {
 
       if (!lot) {
         console.error(
-          `withdraw: No available purchase for ${amount} ${cur} on ${date} (${amount - pending} ${cur} found)`,
+          `withdraw: No available purchase for ${amount} ${cur} on ${date.toISOString()} (${
+            amount - pending
+          } ${cur} found)`,
         )
 
         lotDebit = pending
@@ -137,7 +137,7 @@ const Stock = () => {
           } else {
             const fallbackPrice = secure.fallbackPrice[sellCur] ?? 0
             console.error(
-              `${normalDate(date)}: Missing cost basis for trade ${sell} ${sellCur} -> ${buy} ${buyCur}. ${
+              `${date.toISOString()}: Missing cost basis for trade ${sell} ${sellCur} -> ${buy} ${buyCur}. ${
                 sellCur in secure.fallbackPrice
                   ? 'Using fallback price of $' + fallbackPrice + '.'
                   : 'No fallback price, so using 0.'
@@ -185,7 +185,7 @@ const Stock = () => {
       const costPartialNew = buyPartial * price!
 
       // add a new lot of the purchased currency
-      const lotNew = {
+      const lotNew: Lot = {
         amount: buyPartial,
         cur: buyCur!,
         // give the new lot the old cost basis if like-kind exchange
@@ -211,7 +211,7 @@ const Stock = () => {
         cost: costPartial,
         // subtract the deferred gains from the previous lot since it has already been recorded
         // thus a sum of deferred gains can be made without including any gains more than once
-        deferredGains: lotNew.deferredGains - (lot?.deferredGains || 0),
+        deferredGains: lotNew.deferredGains! - (lot?.deferredGains || 0),
         date, // include this even though it is an argument in order to make concatenated trades easier
         dateAcquired: lot ? lot.date : date,
       }

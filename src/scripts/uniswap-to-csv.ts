@@ -10,8 +10,8 @@ const file = await fs.readFile(filename, 'utf-8')
 const json = JSON.parse(file) as UniswapTrade[]
 
 const transactions: Transaction[] = json.map(txRaw => ({
-  date: txRaw.date,
-  dateAcquired: txRaw.date,
+  date: new Date(txRaw.date),
+  dateAcquired: new Date(txRaw.date),
   from: txRaw.from.currency.symbol,
   cost: +txRaw.from.amount,
   buy: +txRaw.to.amount,

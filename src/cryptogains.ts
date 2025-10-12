@@ -26,7 +26,7 @@ const MINUTE = SECOND * 60
 const groupByDay = (trades: CoinTrackingTrade[]) => {
   const txsByDay: { [key: string]: CoinTrackingTrade[] } = {}
   for (let i = 0; i < trades.length; i++) {
-    const key = day(trades[i]['Trade Date'])
+    const key = day(trades[i].date)
     if (!(key in txsByDay)) {
       txsByDay[key] = []
     }
@@ -35,15 +35,21 @@ const groupByDay = (trades: CoinTrackingTrade[]) => {
   return txsByDay
 }
 
-/** Get the day of the normalized date string. */
-const day = (date: string) => date.split(' ')[0]
+/** Return a parsable date string representing thn given date at midnight, e.g. 2025-01-31. */
+const day = (date: Date): string =>
+  `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date
+    .getDate()
+    .toString()
+    .padStart(2, '0')}`
 
 /** Fetches the price from the cryptocompare API using { from, to, time, exchange } embedded in the given key. Must take a single string argument as input to use as the memoizaton key. Persists the memoized value to a file in ./.nano-persisten-memoizer. */
 const mPrice = memoize('price').async(async (key: string): Promise<number | string> => {
+  // time: any date string that is parsable by new Date()
   const { from, to, time, exchange } = JSON.parse(key)
 
   if (from === to) return 1
 
+  console.log(time)
   const url = `https://min-api.cryptocompare.com/data/pricehistorical?fsym=${from}&tsyms=${to}&ts=${
     new Date(time).getTime() / 1000
   }&e=${exchange}&api_key=${secure.cryptoCompareApiKey}&calculationType=MidHighLow&extraParams=cost-basis-filler`
@@ -66,6 +72,7 @@ const mPrice = memoize('price').async(async (key: string): Promise<number | stri
 const price = async (
   from: string | number,
   to: string | number,
+  // any time string that is parsable by new Date()
   time: string,
   options: { exchange?: string } = {},
 ): Promise<number> => +(await mPrice(JSON.stringify({ from, to, time, exchange: options.exchange || 'cccagg' })))
@@ -180,7 +187,11 @@ const cryptogains = async (
       // convert ICO's to Trade
       // the matching withdrawal of CurSell can be ignored since it does no affect cost basis
       const ico = secure.icos.find(
-        ico => tx.Buy !== null && +ico.Buy === +tx.Buy && ico.CurBuy === tx.CurBuy && ico.Date === tx['Trade Date'],
+        ico =>
+          tx.Buy !== null &&
+          +ico.Buy === +tx.Buy &&
+          ico.CurBuy === tx.CurBuy &&
+          new Date(normalDate(ico.Date)).getTime() === tx.date.getTime(),
       )
       if (ico) {
         tx.Type = 'Trade'
@@ -193,7 +204,7 @@ const cryptogains = async (
 
       // must go before Trade
       if (/lending/i.test(tx['Trade Group'] ?? '')) {
-        let p = tx.Price || (await tryPrice(tx, tx.CurBuy, 'USD', day(normalDate(tx['Trade Date']))))
+        let p = tx.Price || (await tryPrice(tx, tx.CurBuy, 'USD', day(tx.date)))
 
         // Cryptocompare returns erroneous prices for BTS on some days. When a price that is out of range is detected, set it to 0.2 which is a reasonable estimate for that time.
         // e.g. https://min-api.cryptocompare.com/data/pricehistorical?fsym=BTS&tsyms=USD&ts=1495756800
@@ -224,7 +235,7 @@ const cryptogains = async (
         // simulate USD Buy
         // use buy because a USD sale "buys" a certain amount of USD, so buy - cost is the profit
         interest.push({
-          date: tx['Trade Date'],
+          date: tx.date,
           loanAmount: tx.Buy!,
           loanCurrency: tx.CurBuy!,
           interestEarnedUSD: tx.Buy! * p!,
@@ -252,8 +263,8 @@ const cryptogains = async (
         let buyPrice, sellPrice
 
         try {
-          buyPrice = buy ? tx.Price || (await price(tx.CurBuy!, 'USD', day(normalDate(tx['Trade Date'])))) : 0
-          sellPrice = sell ? tx.Price || (await price(tx.CurSell!, 'USD', day(normalDate(tx['Trade Date'])))) : 0
+          buyPrice = buy ? tx.Price || (await price(tx.CurBuy!, 'USD', day(tx.date))) : 0
+          sellPrice = sell ? tx.Price || (await price(tx.CurSell!, 'USD', day(tx.date))) : 0
         } catch (e: any) {
           log.error(`Error fetching price`, e.message)
           priceErrors.push(tx)
@@ -261,13 +272,13 @@ const cryptogains = async (
 
         // simulate USD Buy
         // use buy because a USD sale "buys" a certain amount of USD, so buy - cost is the profit
-        const sale = {
+        const sale: Transaction = {
           buy: +sell * +sellPrice!,
           buyCur: 'USD',
           cost: +buy * +buyPrice!,
           // count as short-term gains
-          date: tx['Trade Date'],
-          dateAcquired: tx['Trade Date'],
+          date: tx.date,
+          dateAcquired: tx.date,
         }
         sales.push(sale)
 
@@ -294,7 +305,7 @@ const cryptogains = async (
             sellCur: tx.CurSell,
             buy: +tx.Buy!,
             buyCur: 'USD',
-            date: tx['Trade Date'],
+            date: tx.date,
             price: undefined,
             type: options.accounting,
           })
@@ -310,7 +321,7 @@ const cryptogains = async (
         else {
           const p =
             tx.Price ||
-            (await tryPrice(tx, tx.CurSell, 'USD', day(normalDate(tx['Trade Date'])), {
+            (await tryPrice(tx, tx.CurSell, 'USD', day(tx.date), {
               exchange: tx.Exchange,
             })) ||
             0
@@ -320,7 +331,7 @@ const cryptogains = async (
             sellCur: tx.CurSell,
             buy: tx.Sell! * +p!,
             buyCur: 'USD',
-            date: tx['Trade Date'],
+            date: tx.date,
             price: undefined,
             type: options.accounting,
           }
@@ -340,7 +351,7 @@ const cryptogains = async (
       // must go before crypto-to-crypto trade
       else if (isCryptoPurchase(tx)) {
         cryptoPurchases.push(tx)
-        stock.deposit(+tx.Buy!, tx.CurBuy!, +tx.Sell!, tx['Trade Date'])
+        stock.deposit(+tx.Buy!, tx.CurBuy!, +tx.Sell!, tx.date)
 
         // trace
         if (traced) {
@@ -357,7 +368,7 @@ const cryptogains = async (
         tradeTxs.push(tx)
 
         // fetch price of buy currency
-        const p = tx.Price || (await tryPrice(tx, tx.CurBuy, 'USD', day(normalDate(tx['Trade Date']))))
+        const p = tx.Price || (await tryPrice(tx, tx.CurBuy, 'USD', day(tx.date)))
 
         // A zero price could cause problems
         // Luckily it seems quite rare
@@ -366,14 +377,14 @@ const cryptogains = async (
         }
 
         // update cost basis
-        const isLikekind = options.likekind && new Date(normalDate(tx['Trade Date'])).getFullYear() < 2018
+        const isLikekind = options.likekind && tx.date.getFullYear() < 2018
         const trades = stock.trade({
           isLikekind,
           sell: +tx.Sell!,
           sellCur: tx.CurSell,
           buy: +tx.Buy!,
           buyCur: tx.CurBuy,
-          date: tx['Trade Date'],
+          date: tx.date,
           price: p,
           type: options.accounting,
         })
@@ -393,7 +404,7 @@ const cryptogains = async (
         income.push(tx)
 
         // update cost basis
-        const p = tx.Price || (await tryPrice(tx, tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])))) || 0
+        const p = tx.Price || (await tryPrice(tx, tx.CurBuy, 'USD', day(tx.date))) || 0
 
         // A zero price could cause problems
         // Luckily it seems quite rare
@@ -401,7 +412,7 @@ const cryptogains = async (
           zeroPrices.push(tx)
         }
 
-        stock.deposit(+tx.Buy!, tx.CurBuy!, tx.Buy! * p, tx['Trade Date'])
+        stock.deposit(+tx.Buy!, tx.CurBuy!, tx.Buy! * p, tx.date)
       }
 
       // REBATE
@@ -411,7 +422,7 @@ const cryptogains = async (
         rebates.push(tx)
 
         // update cost basis
-        const p = tx.Price || (await tryPrice(tx, tx.CurBuy, 'USD', day(normalDate(tx['Trade Date'])))) || 0
+        const p = tx.Price || (await tryPrice(tx, tx.CurBuy, 'USD', day(tx.date))) || 0
 
         // A zero price could cause problems
         // Luckily it seems quite rare
@@ -419,7 +430,7 @@ const cryptogains = async (
           zeroPrices.push(tx)
         }
 
-        stock.deposit(+tx.Buy!, tx.CurBuy!, tx.Buy! * p, tx['Trade Date'])
+        stock.deposit(+tx.Buy!, tx.CurBuy!, tx.Buy! * p, tx.date)
 
         // trace
         if (traced) {
@@ -433,7 +444,7 @@ const cryptogains = async (
         // air drops have cost basis of 0
         if (tx.CurBuy && airdropSymbols.has(tx.CurBuy)) {
           airdrops.push(tx)
-          stock.deposit(+tx.Buy!, tx.CurBuy, 0, tx['Trade Date'])
+          stock.deposit(+tx.Buy!, tx.CurBuy, 0, tx.date)
 
           // trace
           if (traced) {
@@ -442,9 +453,9 @@ const cryptogains = async (
           }
         }
         // SALT presale
-        else if (tx.CurBuy === 'SALT' && tx['Trade Date'].includes('2017')) {
+        else if (tx.CurBuy === 'SALT' && tx.date.getFullYear() === 2017) {
           deposits.push(tx)
-          stock.deposit(+tx.Buy!, tx.CurBuy, tx.Buy! * 0.25, tx['Trade Date'])
+          stock.deposit(+tx.Buy!, tx.CurBuy, tx.Buy! * 0.25, tx.date)
 
           // trace
           if (traced) {
@@ -455,11 +466,11 @@ const cryptogains = async (
         // Forks have a cost basis of 0
         // e.g. BCH, ETC
         else if (
-          (tx.CurBuy === 'BCH' && tx['Trade Date'].includes('2017')) ||
-          (tx.CurBuy === 'ETC' && tx['Trade Date'].includes('2016'))
+          (tx.CurBuy === 'BCH' && tx.date.getFullYear() === 2017) ||
+          (tx.CurBuy === 'ETC' && tx.date.getFullYear() === 2016)
         ) {
           deposits.push(tx)
-          stock.deposit(+tx.Buy!, tx.CurBuy, 0, tx['Trade Date'])
+          stock.deposit(+tx.Buy!, tx.CurBuy, 0, tx.date)
 
           // trace
           if (traced) {
@@ -476,14 +487,12 @@ const cryptogains = async (
             throw new Error(`stakingPairs missing entry for ${tx.CurBuy}`)
           }
 
-          const date = new Date(normalDate(tx['Trade Date']))
-
           // find matching withdrawal with exact same time
           let txMatching = dayGroup.find(
             otherTx =>
               otherTx.Type === 'Withdrawal' &&
               otherTx.CurSell === unstaked &&
-              new Date(normalDate(otherTx['Trade Date'])).getTime() === date.getTime(),
+              otherTx.date.getTime() === tx.date.getTime(),
           )
 
           // fallback to matching withdrawals within 5 minutes
@@ -493,7 +502,7 @@ const cryptogains = async (
                 otherTx =>
                   otherTx.Type === 'Withdrawal' &&
                   otherTx.CurSell === unstaked &&
-                  Math.abs(new Date(normalDate(otherTx['Trade Date'])).getTime() - date.getTime()) < 5 * MINUTE,
+                  Math.abs(otherTx.date.getTime() - tx.date.getTime()) < 5 * MINUTE,
               )
 
           if (txs.length === 0) {
@@ -501,25 +510,25 @@ const cryptogains = async (
               .filter(otherTx => otherTx.Type === 'Withdrawal')
               .map(otherTx => ({
                 ...otherTx,
-                timeSinceDeposit: Math.abs(new Date(normalDate(otherTx['Trade Date'])).getTime() - date.getTime()),
+                timeSinceDeposit: Math.abs(otherTx.date.getTime() - tx.date.getTime()),
               }))
             if (+tx.CurBuy >= 0.0000001) {
-              console.error(date)
+              console.error(tx.date)
               console.error({ sameDayWithdrawals })
               throw new Error(
                 `No matching withdrawal within ${5 * MINUTE} ms (5 min) for staked ${tx.Buy} ${tx.CurBuy!}`,
               )
             } else {
               log.error(
-                `${tx['Trade Date']}: No matching withdrawal for deposit of ${tx.Buy} ${tx.CurBuy}, but trade is too small to matter.`,
+                `${tx.date}: No matching withdrawal for deposit of ${tx.Buy} ${tx.CurBuy}, but trade is too small to matter.`,
               )
             }
           } else if (txs.length > 1) {
-            console.error(date)
+            console.error(tx.date)
             console.error(
               txs.map(otherTx => ({
                 ...otherTx,
-                timeSinceDeposit: Math.abs(new Date(normalDate(otherTx['Trade Date'])).getTime() - date.getTime()),
+                timeSinceDeposit: Math.abs(otherTx.date.getTime() - tx.date.getTime()),
               })),
             )
             throw new Error(
@@ -529,8 +538,8 @@ const cryptogains = async (
             txMatching = txs[0]
 
             // TODO: Cost Basis
-            stock.deposit(+tx.Buy!, tx.CurBuy, 0, tx['Trade Date'])
-            stock.withdraw(+txMatching.Sell!, txMatching.CurSell, tx['Trade Date'], options.accounting)
+            stock.deposit(+tx.Buy!, tx.CurBuy, 0, tx.date)
+            stock.withdraw(+txMatching.Sell!, txMatching.CurSell, tx.date, options.accounting)
           }
 
           // trace
@@ -556,13 +565,13 @@ const cryptogains = async (
               const fallbackPrice = secure.fallbackPrice[tx.CurBuy.toUpperCase()] ?? 0
 
               log.error(
-                `${tx['Trade Date']}: Deposit of ${tx.Buy} ${tx.CurBuy} to ${tx.Exchange} exceeds current balance of ${balance} ${tx.CurBuy}.`,
+                `${tx.date}: Deposit of ${tx.Buy} ${tx.CurBuy} to ${tx.Exchange} exceeds current balance of ${balance} ${tx.CurBuy}.`,
               )
               log.error(
                 `  Adding ${diff} ${tx.CurBuy} to stock with $${fallbackPrice} cost basis to ensure adequate balance of ${tx.Buy} ${tx.CurBuy}.`,
               )
 
-              stock.deposit(diff, tx.CurBuy, fallbackPrice, tx['Trade Date'])
+              stock.deposit(diff, tx.CurBuy, fallbackPrice, tx.date)
             }
           }
 
@@ -588,7 +597,7 @@ const cryptogains = async (
       // SPEND
       else if (tx.Type === 'Spend') {
         withdrawals.push(tx)
-        stock.withdraw(+tx.Sell!, tx.CurSell!, tx['Trade Date'], options.accounting)
+        stock.withdraw(+tx.Sell!, tx.CurSell!, tx.date, options.accounting)
 
         // trace
         if (traced) {
