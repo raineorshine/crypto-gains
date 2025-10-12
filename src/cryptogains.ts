@@ -5,6 +5,7 @@ import CoinTrackingTrade from './@types/CoinTrackingTrade.js'
 import Loan from './@types/Loan.js'
 import SecureData from './@types/SecureData.js'
 import Ticker from './@types/Ticker.js'
+import Trade from './@types/Trade.js'
 import Transaction from './@types/Transaction.js'
 import log from './log.js'
 import normalDate from './normalDate.js'
@@ -216,11 +217,17 @@ const cryptogains = async (
           loanCurrency: tx.CurBuy!,
           interestEarnedUSD: tx.Buy! * p!,
         })
+
+        // trace
+        if (traced) {
+          log(`TRACE ${options.trace} lending`, tx.Buy)
+          log(`TRACE ${options.trace} balance`, stock.balance(options.trace as Ticker))
+        }
       }
 
-      // MARGIN
+      // MARGIN TRADE
 
-      // must go before iscryptoSales
+      // must go before isCryptoSale
       // some Bitfinex margin trades are reported as Lost
       // similar to Trade processing, but does not update stock
       else if (/margin/i.test(tx['Trade Group'] ?? '') || tx.Type === 'Lost') {
@@ -242,14 +249,21 @@ const cryptogains = async (
 
         // simulate USD Buy
         // use buy because a USD sale "buys" a certain amount of USD, so buy - cost is the profit
-        sales.push({
+        const sale = {
           buy: +sell * +sellPrice!,
           buyCur: 'USD',
           cost: +buy * +buyPrice!,
           // count as short-term gains
           date: tx['Trade Date'],
           dateAcquired: tx['Trade Date'],
-        })
+        }
+        sales.push(sale)
+
+        // trace
+        if (traced) {
+          log(`TRACE ${options.trace} margin trade`, sale)
+          log(`TRACE ${options.trace} balance`, stock.balance(options.trace as Ticker))
+        }
       }
 
       // SALE
@@ -288,18 +302,23 @@ const cryptogains = async (
               exchange: tx.Exchange,
             })) ||
             0
-          sales.push(
-            ...stock.trade({
-              isLikekind: undefined,
-              sell: +tx.Sell!,
-              sellCur: tx.CurSell,
-              buy: tx.Sell! * +p!,
-              buyCur: 'USD',
-              date: tx['Trade Date'],
-              price: undefined,
-              type: options.accounting,
-            }),
-          )
+          const sale: Trade = {
+            isLikekind: undefined,
+            sell: +tx.Sell!,
+            sellCur: tx.CurSell,
+            buy: tx.Sell! * +p!,
+            buyCur: 'USD',
+            date: tx['Trade Date'],
+            price: undefined,
+            type: options.accounting,
+          }
+          sales.push(...stock.trade(sale))
+
+          // trace
+          if (traced) {
+            log(`TRACE ${options.trace} margin trade`, sale)
+            log(`TRACE ${options.trace} balance`, stock.balance(options.trace as Ticker))
+          }
         }
       }
 
@@ -389,6 +408,12 @@ const cryptogains = async (
         }
 
         stock.deposit(+tx.Buy!, tx.CurBuy!, tx.Buy! * p, tx['Trade Date'])
+
+        // trace
+        if (traced) {
+          log(`TRACE ${options.trace} income`, tx.Buy)
+          log(`TRACE ${options.trace} balance`, stock.balance(options.trace as Ticker))
+        }
       }
 
       // DEPOSIT
@@ -397,11 +422,23 @@ const cryptogains = async (
         if (tx.CurBuy && airdropSymbols.has(tx.CurBuy)) {
           airdrops.push(tx)
           stock.deposit(+tx.Buy!, tx.CurBuy, 0, tx['Trade Date'])
+
+          // trace
+          if (traced) {
+            log(`TRACE ${options.trace} airdrop`, tx.Buy)
+            log(`TRACE ${options.trace} balance`, stock.balance(options.trace as Ticker))
+          }
         }
         // SALT presale
         else if (tx.CurBuy === 'SALT' && tx['Trade Date'].includes('2017')) {
           deposits.push(tx)
           stock.deposit(+tx.Buy!, tx.CurBuy, tx.Buy! * 0.25, tx['Trade Date'])
+
+          // trace
+          if (traced) {
+            log(`TRACE ${options.trace} presale`, tx.Buy)
+            log(`TRACE ${options.trace} balance`, stock.balance(options.trace as Ticker))
+          }
         }
         // Forks have a cost basis of 0
         // e.g. BCH, ETC
@@ -411,6 +448,12 @@ const cryptogains = async (
         ) {
           deposits.push(tx)
           stock.deposit(+tx.Buy!, tx.CurBuy, 0, tx['Trade Date'])
+
+          // trace
+          if (traced) {
+            log(`TRACE ${options.trace} fork`, tx.Buy)
+            log(`TRACE ${options.trace} balance`, stock.balance(options.trace as Ticker))
+          }
         }
         // Otherwise assume the deposit is an internal transfer.
         // No need to change the stock or cost basis.
@@ -436,13 +479,12 @@ const cryptogains = async (
 
               stock.deposit(diff, tx.CurBuy, fallbackPrice, tx['Trade Date'])
             }
-          }
-        }
 
-        // trace
-        if (traced) {
-          log(`TRACE ${options.trace} deposit`, tx.Buy)
-          log(`TRACE ${options.trace} balance`, stock.balance(options.trace as Ticker))
+            // trace
+            if (traced) {
+              log(`TRACE ${options.trace} balance`, stock.balance(options.trace as Ticker))
+            }
+          }
         }
       }
 
@@ -461,6 +503,12 @@ const cryptogains = async (
       else if (tx.Type === 'Spend') {
         withdrawals.push(tx)
         stock.withdraw(+tx.Sell!, tx.CurSell!, tx['Trade Date'], options.accounting)
+
+        // trace
+        if (traced) {
+          log(`TRACE ${options.trace} spend`, tx.Sell)
+          log(`TRACE ${options.trace} balance`, stock.balance(options.trace as Ticker))
+        }
       }
 
       // UNKNOWN
