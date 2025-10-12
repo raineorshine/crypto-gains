@@ -11,7 +11,6 @@ import UniswapTrade from './@types/UniswapTrade.js'
 import error from './error.js'
 import log from './log.js'
 import nonNull from './nonNull.js'
-import normalDate from './normalDate.js'
 
 const allowedCsvFormats = ['CoinTracking', 'Gemini', 'Kraken', 'Ledger Operation History']
 
@@ -152,6 +151,8 @@ const fixCointrackingHeader = (input: string): string => {
 }
 
 const loadCoinTrackingTrade = (trade: CoinTrackingTrade): Trade | null => {
+  const d = trade['Trade Date']
+  const date = new Date(`${d.slice(6, 10)}-${d.slice(3, 5)}-${d.slice(0, 2)} ${d.slice(11)}`)
   return {
     type: trade.Type,
     buy: trade.Buy,
@@ -163,7 +164,7 @@ const loadCoinTrackingTrade = (trade: CoinTrackingTrade): Trade | null => {
     price: trade.Price,
     sell: trade.Sell,
     tradeGroup: trade['Trade Group'],
-    date: new Date(normalDate(trade['Trade Date'])),
+    date,
   }
 }
 
