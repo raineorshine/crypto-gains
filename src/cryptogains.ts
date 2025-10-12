@@ -70,7 +70,7 @@ const mPrice = memoize('price').async(async (key: string): Promise<number | stri
 const price = async (
   from: string | number,
   to: string | number,
-  // any time string that is parsable by new Date()
+  /** Any date string that can be parsed by new Date(). */
   time: string,
   options: { exchange?: string } = {},
 ): Promise<number> => +(await mPrice(JSON.stringify({ from, to, time, exchange: options.exchange || 'cccagg' })))
@@ -135,6 +135,7 @@ const cryptogains = async (
     tx: Trade,
     from: string | number | undefined,
     to: string | number | undefined,
+    /** Any date string that can be parsed by new Date(). */
     time: string,
     options?: Parameters<typeof price>[3],
   ): Promise<number | undefined> => {
@@ -438,6 +439,9 @@ const cryptogains = async (
       }
 
       // DEPOSIT
+      // Deposits are generally treated as internal transfers and are not recorded in the stock.
+      // Special cases like AirDrops and presales do update the stock.
+      // If the deposit exceeds the stock, then assume the cost basis was lost and add it to the stock with the fallback cost basis (see else condition)
       else if (tx.type === 'Deposit') {
         // air drops have cost basis of 0
         if (tx.curBuy && airdropSymbols.has(tx.curBuy)) {
@@ -561,8 +565,13 @@ const cryptogains = async (
       }
 
       // WITHDRAWAL
+      // Withdrawals are treated as internal transfers and are not recorded in the stock.
+      // TODO: Record staking withdrawals in the stock
       else if (tx.type === 'Withdrawal') {
         withdrawals.push(tx)
+
+        // Note that this won't affect output, because stock.withdraw doesn't affect the stock
+        // stock.withdraw(+tx.sell!, tx.curSell!, tx.date, options.accounting)
 
         // trace
         if (traced) {
