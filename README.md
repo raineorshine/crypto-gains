@@ -33,6 +33,7 @@ Historical prices provided by the [cryptocompare API](https://min-api.cryptocomp
   --likekind    Allow like-kind exchange before 2018.            [default: true]
   --limit       Limit number of transactions processed.      [default: Infinity]
   --output      Output directory for results.                 [default: dry run]
+  --trace       Log all transaction and rolling balances of a token.
   --verbose     Show more errors and warnings.
   --version     Show version number                                    [boolean]
 ```
