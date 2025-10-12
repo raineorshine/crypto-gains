@@ -169,6 +169,7 @@ const sum = (x: number, y: number): number => x + y
     likeKindExchanges,
     priceErrors,
     zeroPrices,
+    minBalance,
     stock,
   } = await cryptogains(txs, {
     ...argv,
@@ -211,6 +212,7 @@ const sum = (x: number, y: number): number => x + y
   log('ERRORS')
   log('Price errors:', priceErrors.length)
   log('Zero prices:', zeroPrices.length)
+  log('Min balance:', minBalance.length)
   log('')
 
   log('STOCK (sample)')

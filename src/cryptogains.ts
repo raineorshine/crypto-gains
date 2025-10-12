@@ -115,6 +115,7 @@ const cryptogains = async (
   const likeKindExchanges: Transaction[] = []
   const priceErrors: CoinTrackingTrade[] = []
   const zeroPrices: CoinTrackingTrade[] = []
+  const minBalance: CoinTrackingTrade[] = []
 
   const txsByDay = groupByDay(txs)
 
@@ -415,6 +416,27 @@ const cryptogains = async (
         // No need to change the stock or cost basis.
         else {
           deposits.push(tx)
+
+          // If the deposit amount is greater than the current balance, then we are missing the record of a trade.
+          // TODO: How to differentiate an internal transfer from an initial deposit?
+          // There should be no such thing as an initial deposit, because acquiring a token always begins with a trade.
+          if (tx.CurBuy && tx.Buy && !isUsdEquivalent(tx.CurBuy)) {
+            const balance = stock.balance(tx.CurBuy)
+            const diff = +tx.Buy - balance
+            if (diff > 0!) {
+              minBalance.push(tx)
+              const fallbackPrice = secure.fallbackPrice[tx.CurBuy.toUpperCase()] ?? 0
+
+              log.error(
+                `${tx['Trade Date']}: Deposit of ${tx.Buy} ${tx.CurBuy} exceeds current balance of ${balance} ${tx.CurBuy}.`,
+              )
+              log.error(
+                `  Adding ${diff} ${tx.CurBuy} to stock with $${fallbackPrice} cost basis to ensure adequate balance of ${tx.Buy} ${tx.CurBuy}.`,
+              )
+
+              stock.deposit(diff, tx.CurBuy, fallbackPrice, tx['Trade Date'])
+            }
+          }
         }
 
         // trace
@@ -465,6 +487,7 @@ const cryptogains = async (
     priceErrors,
     zeroPrices,
     stock,
+    minBalance,
   }
 }
 
