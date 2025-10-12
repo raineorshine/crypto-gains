@@ -8,7 +8,6 @@ import Ticker from './@types/Ticker.js'
 import Trade from './@types/Trade.js'
 import Transaction from './@types/Transaction.js'
 import log from './log.js'
-import normalDate from './normalDate.js'
 import Stock from './stock.js'
 import airdropSymbols from './util/airdropSymbols.js'
 import isUsdEquivalent from './util/isUsdEquivalent.js'
@@ -191,7 +190,7 @@ const cryptogains = async (
           tx.Buy !== null &&
           +ico.Buy === +tx.Buy &&
           ico.CurBuy === tx.CurBuy &&
-          new Date(normalDate(ico.Date)).getTime() === tx.date.getTime(),
+          new Date(ico.Date).getTime() === tx.date.getTime(),
       )
       if (ico) {
         tx.Type = 'Trade'
