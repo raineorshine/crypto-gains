@@ -12,10 +12,15 @@ import normalDate from './normalDate.js'
 import Stock from './stock.js'
 import airdropSymbols from './util/airdropSymbols.js'
 import isUsdEquivalent from './util/isUsdEquivalent.js'
+import stakingSymbols from './util/stakingSymbols.js'
+import unstake from './util/unstake.js'
 
 const secure = JSON.parse(await fs.readFile(new URL('../data/secure.json', import.meta.url), 'utf-8')) as SecureData
 
 const stock = Stock()
+
+const SECOND = 1000
+const MINUTE = SECOND * 60
 
 /** Group transactions by day. */
 const groupByDay = (trades: CoinTrackingTrade[]) => {
@@ -100,6 +105,7 @@ const cryptogains = async (
   const margin: CoinTrackingTrade[] = []
   const tradeTxs: CoinTrackingTrade[] = []
   const airdrops: CoinTrackingTrade[] = []
+  const staking: CoinTrackingTrade[] = []
 
   /* List of sales (not including like-kind-exchanges)
   {
@@ -461,6 +467,79 @@ const cryptogains = async (
             log(`TRACE ${traced} balance`, stock.balance(traced!))
           }
         }
+        // stake
+        else if (tx.CurBuy && stakingSymbols.has(tx.CurBuy)) {
+          staking.push(tx)
+
+          const unstaked = unstake(tx.CurBuy)
+          if (!unstaked) {
+            throw new Error(`stakingPairs missing entry for ${tx.CurBuy}`)
+          }
+
+          const date = new Date(normalDate(tx['Trade Date']))
+
+          // find matching withdrawal with exact same time
+          let txMatching = dayGroup.find(
+            otherTx =>
+              otherTx.Type === 'Withdrawal' &&
+              otherTx.CurSell === unstaked &&
+              new Date(normalDate(otherTx['Trade Date'])).getTime() === date.getTime(),
+          )
+
+          // fallback to matching withdrawals within 5 minutes
+          const txs = txMatching
+            ? [txMatching]
+            : dayGroup.filter(
+                otherTx =>
+                  otherTx.Type === 'Withdrawal' &&
+                  otherTx.CurSell === unstaked &&
+                  Math.abs(new Date(normalDate(otherTx['Trade Date'])).getTime() - date.getTime()) < 5 * MINUTE,
+              )
+
+          if (txs.length === 0) {
+            const sameDayWithdrawals = dayGroup
+              .filter(otherTx => otherTx.Type === 'Withdrawal')
+              .map(otherTx => ({
+                ...otherTx,
+                timeSinceDeposit: Math.abs(new Date(normalDate(otherTx['Trade Date'])).getTime() - date.getTime()),
+              }))
+            if (+tx.CurBuy >= 0.0000001) {
+              console.error(date)
+              console.error({ sameDayWithdrawals })
+              throw new Error(
+                `No matching withdrawal within ${5 * MINUTE} ms (5 min) for staked ${tx.Buy} ${tx.CurBuy!}`,
+              )
+            } else {
+              log.error(
+                `${tx['Trade Date']}: No matching withdrawal for deposit of ${tx.Buy} ${tx.CurBuy}, but trade is too small to matter.`,
+              )
+            }
+          } else if (txs.length > 1) {
+            console.error(date)
+            console.error(
+              txs.map(otherTx => ({
+                ...otherTx,
+                timeSinceDeposit: Math.abs(new Date(normalDate(otherTx['Trade Date'])).getTime() - date.getTime()),
+              })),
+            )
+            throw new Error(
+              `Too many matching withdrawals within ${5 * MINUTE} ms (5 min) for staked ${tx.Buy} ${tx.CurBuy!}`,
+            )
+          } else {
+            txMatching = txs[0]
+
+            // TODO: Cost Basis
+            stock.deposit(+tx.Buy!, tx.CurBuy, 0, tx['Trade Date'])
+            stock.withdraw(+txMatching.Sell!, txMatching.CurSell, tx['Trade Date'], options.accounting)
+          }
+
+          // trace
+          if (traced) {
+            log(`TRACE ${traced} stake`, tx.Buy)
+            log(`TRACE ${traced} stake matching withdrawal`, txMatching)
+            log(`TRACE ${traced} balance`, stock.balance(traced!))
+          }
+        }
         // Otherwise assume the deposit is an internal transfer.
         // No need to change the stock or cost basis.
         else {
@@ -485,11 +564,12 @@ const cryptogains = async (
 
               stock.deposit(diff, tx.CurBuy, fallbackPrice, tx['Trade Date'])
             }
+          }
 
-            // trace
-            if (traced) {
-              log(`TRACE ${traced} balance`, stock.balance(traced!))
-            }
+          // trace
+          if (traced) {
+            log(`TRACE ${traced} deposit`, tx.Buy)
+            log(`TRACE ${traced} balance`, stock.balance(traced!))
           }
         }
       }
@@ -530,6 +610,7 @@ const cryptogains = async (
     cryptoSales,
     cryptoPurchases,
     airdrops,
+    staking,
     deposits,
     withdrawals,
     tradeTxs,

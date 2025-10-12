@@ -1,5 +1,7 @@
+import Ticker from '../@types/Ticker.js'
+
 /** A set of airdropped altcoins. */
-const airdropSymbols = new Set([
+const airdropSymbols = new Set<Ticker>([
   'A',
   'AFROX',
   'AIMS',
