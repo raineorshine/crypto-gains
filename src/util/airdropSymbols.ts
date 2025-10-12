@@ -87,6 +87,7 @@ const airdropSymbols = new Set([
   'WWWYIDAI',
   'XLAB',
   'XNN',
+  'XPT',
   'ZNT',
 ])
 
