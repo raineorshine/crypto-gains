@@ -139,7 +139,7 @@ const Stock = () => {
             console.error(
               `${normalDate(date)}: Missing cost basis for trade ${sell} ${sellCur} -> ${buy} ${buyCur}. ${
                 sellCur in secure.fallbackPrice
-                  ? 'Using fallback price of ' + fallbackPrice
+                  ? 'Using fallback price of $' + fallbackPrice + '.'
                   : 'No fallback price, so using 0.'
               }`,
             )

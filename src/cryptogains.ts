@@ -428,7 +428,7 @@ const cryptogains = async (
               const fallbackPrice = secure.fallbackPrice[tx.CurBuy.toUpperCase()] ?? 0
 
               log.error(
-                `${tx['Trade Date']}: Deposit of ${tx.Buy} ${tx.CurBuy} exceeds current balance of ${balance} ${tx.CurBuy}.`,
+                `${tx['Trade Date']}: Deposit of ${tx.Buy} ${tx.CurBuy} to ${tx.Exchange} exceeds current balance of ${balance} ${tx.CurBuy}.`,
               )
               log.error(
                 `  Adding ${diff} ${tx.CurBuy} to stock with $${fallbackPrice} cost basis to ensure adequate balance of ${tx.Buy} ${tx.CurBuy}.`,

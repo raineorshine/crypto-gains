@@ -200,7 +200,7 @@ const sum = (x: number, y: number): number => x + y
   log('Crypto sales:', cryptoSales.length)
   log('Crypto purchases:', cryptoPurchases.length)
   log('USD Deposits:', usdDeposits.length)
-  log('Airdrops', airdrops.length)
+  log('Airdrops:', airdrops.length)
   log('Income:', income.length)
   log('Rebates:', rebates.length)
   log('Trades:', tradeTxs.length)
@@ -215,8 +215,8 @@ const sum = (x: number, y: number): number => x + y
   log('Min balance:', minBalance.length)
   log('')
 
-  log('STOCK (sample)')
-  const sampleSymbols = new Set(['BTC', 'ETH'])
+  log(argv.trace ? 'STOCK' : 'STOCK (sample)')
+  const sampleSymbols = new Set(argv.trace ? [argv.trace.toUpperCase()] : ['BTC', 'ETH'])
   const stockMap = stock.all() as { [key: string]: number }
   const stockFiltered = Object.fromEntries(Object.entries(stockMap).filter(([cur, amount]) => sampleSymbols.has(cur)))
   log(stockFiltered)
