@@ -95,7 +95,6 @@ const cryptogains = async (
   const rebates: CoinTrackingTrade[] = []
   const cryptoSales: CoinTrackingTrade[] = []
   const cryptoPurchases: CoinTrackingTrade[] = []
-  const usdDeposits: CoinTrackingTrade[] = []
   const deposits: CoinTrackingTrade[] = []
   const withdrawals: CoinTrackingTrade[] = []
   const margin: CoinTrackingTrade[] = []
@@ -524,7 +523,6 @@ const cryptogains = async (
     cryptoSales,
     cryptoPurchases,
     airdrops,
-    usdDeposits,
     deposits,
     withdrawals,
     tradeTxs,
