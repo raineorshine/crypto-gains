@@ -486,24 +486,14 @@ const cryptogains = async (
           }
 
           // find matching withdrawal with exact same time
-          let txMatching = dayGroup.find(
+          const txMatching = dayGroup.find(
             otherTx =>
               otherTx.type === 'Withdrawal' &&
               otherTx.curSell === unstaked &&
               otherTx.date.getTime() === tx.date.getTime(),
           )
 
-          // fallback to matching withdrawals within 5 minutes
-          const txsMatching = txMatching
-            ? [txMatching]
-            : dayGroup.filter(
-                otherTx =>
-                  otherTx.type === 'Withdrawal' &&
-                  otherTx.curSell === unstaked &&
-                  Math.abs(otherTx.date.getTime() - tx.date.getTime()) < 0 * MINUTE,
-              )
-
-          if (txsMatching.length === 0) {
+          if (!txMatching) {
             const sameDayWithdrawals = dayGroup
               .filter(otherTx => otherTx.type === 'Withdrawal')
               .map(otherTx => ({
@@ -521,20 +511,7 @@ const cryptogains = async (
                 `${tx.date}: No matching withdrawal for deposit of ${tx.buy} ${tx.curBuy}, but trade is too small to matter.`,
               )
             }
-          } else if (txsMatching.length > 1) {
-            console.error(tx.date)
-            console.error(
-              txsMatching.map(otherTx => ({
-                ...otherTx,
-                timeSinceDeposit: Math.abs(otherTx.date.getTime() - tx.date.getTime()),
-              })),
-            )
-            throw new Error(
-              `Too many matching withdrawals within ${5 * MINUTE} ms (5 min) for staked ${tx.buy} ${tx.curBuy!}`,
-            )
           } else {
-            txMatching = txsMatching[0]
-
             // TODO: Cost Basis
             // TODO: Withdraw and deposit in inverse, maintaining cost basis
             // TODO: Does staking count as a sale since it converts ETH to WETH?
