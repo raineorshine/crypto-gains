@@ -349,7 +349,7 @@ describe('stock', () => {
       ])
     })
 
-    it('do not debit from stock', () => {
+    it('debit from stock', () => {
       const stock = Stock()
       const date = new Date()
       stock.deposit(10, 'BTC', 40000, date)
@@ -362,7 +362,7 @@ describe('stock', () => {
           date,
         },
       ])
-      assert.equal(stock.balance('BTC'), 10)
+      assert.equal(stock.balance('BTC'), 9)
     })
 
     it('withdraw remainder with zero cost basis if currency is missing from stock', () => {

@@ -570,7 +570,7 @@ const cryptogains = async (
       else if (tx.type === 'Withdrawal') {
         withdrawals.push(tx)
 
-        // Note that this won't affect output, because stock.withdraw doesn't affect the stock
+        // This WILL affect the gains
         // stock.withdraw(+tx.sell!, tx.curSell!, tx.date, options.accounting)
 
         // trace

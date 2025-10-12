@@ -65,10 +65,13 @@ const Stock = () => {
       else if (lot.amount > pending) {
         lotDebit = pending
         cost = lot.cost * (pending / lot.amount)
+        lot.amount -= pending
+        lot.cost -= cost
         pending = 0
       }
       // lot is not big enough
       else {
+        remove(lot)
         lotDebit = lot.amount
         cost = lot.cost
         pending -= lot.amount
