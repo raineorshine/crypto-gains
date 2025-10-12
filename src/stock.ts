@@ -2,7 +2,6 @@ import fs from 'fs/promises'
 import Lot from './@types/Lot.js'
 import SecureData from './@types/SecureData.js'
 import Ticker from './@types/Ticker.js'
-import Trade from './@types/Trade.js'
 import isStableCoin from './util/isStableCoin.js'
 
 const secure = JSON.parse(await fs.readFile(new URL('../data/secure.json', import.meta.url), 'utf-8')) as SecureData
@@ -90,7 +89,25 @@ const Stock = () => {
    *
    * @param price Updates the cost basis of the new lot. Gains are calculated from the original cost basis in the return value. If isLikekind, the cost basis is preserved.
    */
-  const trade = ({ sell, sellCur, buy, buyCur, date, price, isLikekind, type }: Trade) => {
+  const trade = ({
+    sell,
+    sellCur,
+    buy,
+    buyCur,
+    date,
+    price,
+    isLikekind,
+    type,
+  }: {
+    sell: number
+    sellCur?: Ticker
+    buy: number
+    buyCur?: Ticker
+    date: Date
+    price?: number
+    isLikekind?: boolean
+    type?: 'fifo' | 'lifo'
+  }) => {
     type = type || 'fifo'
 
     /** The quantity of sellCur remaining before the next matching lot is identified. */

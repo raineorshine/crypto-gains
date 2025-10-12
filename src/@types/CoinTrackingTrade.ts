@@ -28,7 +28,7 @@ interface CoinTrackingTrade {
   Price?: number
   // Actual CoinTracking CSV contains a 'Trade Date' column in format dd.mm.yyyy that is converted to a proper date in loadTrades
   // Since we use CoinTrackingTrade as the de facto trade type, just coerce the type when importing and otherwise use a proper Date.
-  // TODO: Use a distinct type internally, thogh it will need to be differentiated from the existing Trade type.
+  // TODO: Use a distinct type internally
   // 'Trade Date': string
   date: Date
 }

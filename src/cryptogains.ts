@@ -5,7 +5,6 @@ import CoinTrackingTrade from './@types/CoinTrackingTrade.js'
 import Loan from './@types/Loan.js'
 import SecureData from './@types/SecureData.js'
 import Ticker from './@types/Ticker.js'
-import Trade from './@types/Trade.js'
 import Transaction from './@types/Transaction.js'
 import log from './log.js'
 import Stock from './stock.js'
@@ -324,12 +323,12 @@ const cryptogains = async (
               exchange: tx.Exchange,
             })) ||
             0
-          const sale: Trade = {
+          const sale = {
             isLikekind: undefined,
             sell: +tx.Sell!,
             sellCur: tx.CurSell,
             buy: tx.Sell! * +p!,
-            buyCur: 'USD',
+            buyCur: 'USD' as const,
             date: tx.date,
             price: undefined,
             type: options.accounting,
