@@ -5,6 +5,7 @@ import CoinTrackingTrade from './@types/CoinTrackingTrade.js'
 import GeminiTrade from './@types/GeminiTrade.js'
 import KrakenTrade from './@types/KrakenTrade.js'
 import LedgerTrade from './@types/LedgerTrade.js'
+import Trade from './@types/Trade.js'
 import TradingPair from './@types/TradingPair.js'
 import UniswapTrade from './@types/UniswapTrade.js'
 import error from './error.js'
@@ -15,7 +16,7 @@ import normalDate from './normalDate.js'
 const allowedCsvFormats = ['CoinTracking', 'Gemini', 'Kraken', 'Ledger Operation History']
 
 // Corresponding type: CoinTrackingTrade
-const cointrackingColumns: (keyof CoinTrackingTrade | 'Cur.' | 'Trade Date')[] = [
+const cointrackingColumns: (keyof CoinTrackingTrade | 'Cur.')[] = [
   'Type',
   'Buy',
   'Cur.',
@@ -150,31 +151,47 @@ const fixCointrackingHeader = (input: string): string => {
     .join('\n')
 }
 
+const loadCoinTrackingTrade = (trade: CoinTrackingTrade): Trade | null => {
+  return {
+    type: trade.Type,
+    buy: trade.Buy,
+    comment: trade.Comment,
+    curBuy: trade.CurBuy,
+    curSell: trade.CurSell,
+    exchange: trade.Exchange,
+    fee: trade.Fee,
+    price: trade.Price,
+    sell: trade.Sell,
+    tradeGroup: trade['Trade Group'],
+    date: new Date(normalDate(trade['Trade Date'])),
+  }
+}
+
 /** Converts a trade in the Kraken schema to the Cointracking schema. */
-const krakenTradeToCointracking = (trade: KrakenTrade): CoinTrackingTrade | null => {
+const loadKrakenTrade = (trade: KrakenTrade): Trade | null => {
   const { from, to } = pair(trade.pair)!
   // ignore USDC/GUSD -> USD trades
   if ((trade.type === 'buy' || trade.type === 'sell') && !from && !to) return null
 
   return {
-    Type:
+    type:
       trade.type === 'buy' || trade.type === 'sell'
         ? 'Trade'
-        : (`${trade.type[0].toUpperCase()}${trade.type.slice(1).toLowerCase()}` as CoinTrackingTrade['Type']),
-    Buy: trade.type === 'buy' || trade.type === 'deposit' ? +trade.cost / trade.price : +trade.cost,
-    CurBuy: trade.type === 'buy' || trade.type === 'deposit' ? from : 'USD',
-    Sell: trade.type === 'sell' ? +trade.cost / trade.price : +trade.cost,
-    CurSell: trade.type === 'sell' ? from : 'USD',
-    Exchange: 'Kraken',
+        : (`${trade.type[0].toUpperCase()}${trade.type.slice(1).toLowerCase()}` as Trade['type']),
+    buy: trade.type === 'buy' || trade.type === 'deposit' ? +trade.cost / trade.price : +trade.cost,
+    curBuy: trade.type === 'buy' || trade.type === 'deposit' ? from : 'USD',
+    sell: trade.type === 'sell' ? +trade.cost / trade.price : +trade.cost,
+    curSell: trade.type === 'sell' ? from : 'USD',
+    exchange: 'Kraken',
     // Use Kraken-provided price
     // Not part of Cointracking data schema
-    Price: +trade.price,
+    price: +trade.price,
     date: new Date(trade.time),
   }
 }
 
 /** Converts a trade in the Gemini schema to the Cointracking schema. */
-const geminiTradeToCointracking = (trade: GeminiTrade): CoinTrackingTrade | null => {
+const loadGeminiTrade = (trade: GeminiTrade): Trade | null => {
   // xlsx file comes with an empty totals row that should be ignored
   if (!trade.Date && !trade.Type && !trade.Specification) return null
 
@@ -229,7 +246,7 @@ const geminiTradeToCointracking = (trade: GeminiTrade): CoinTrackingTrade | null
   }
 
   return {
-    Type: trade.Specification.includes('Gemini Credit Card Reward Payout')
+    type: trade.Specification.includes('Gemini Credit Card Reward Payout')
       ? 'Rebate'
       : trade.Type === 'Buy' || trade.Type === 'Sell'
         ? 'Trade'
@@ -238,18 +255,18 @@ const geminiTradeToCointracking = (trade: GeminiTrade): CoinTrackingTrade | null
           : trade.Type === 'Debit'
             ? 'Withdrawal'
             : trade.Type,
-    Buy: trade.Type === 'Credit' ? buyAmount : trade.Type === 'Buy' ? cost / price : cost,
-    CurBuy: trade.Type === 'Buy' || trade.Type === 'Credit' ? from : 'USD',
-    Sell: trade.Type === 'Sell' ? cost / price : cost,
-    CurSell: trade.Type === 'Sell' ? from : 'USD',
-    Exchange: 'Gemini',
-    Price: price,
+    buy: trade.Type === 'Credit' ? buyAmount : trade.Type === 'Buy' ? cost / price : cost,
+    curBuy: trade.Type === 'Buy' || trade.Type === 'Credit' ? from : 'USD',
+    sell: trade.Type === 'Sell' ? cost / price : cost,
+    curSell: trade.Type === 'Sell' ? from : 'USD',
+    exchange: 'Gemini',
+    price: price,
     date: new Date(trade.Date),
   }
 }
 
 /** Converts a trade in the Uniswap schema to the Cointracking schema. */
-const uniswapTradeToCointracking = (trade: UniswapTrade): CoinTrackingTrade | null => {
+const loadUniswapTrade = (trade: UniswapTrade): Trade | null => {
   if (trade.type !== 'exchange') {
     throw new Error('Unrecognized Uniswap trade type: ' + trade.type)
   }
@@ -258,19 +275,19 @@ const uniswapTradeToCointracking = (trade: UniswapTrade): CoinTrackingTrade | nu
   const sellAmount = parseFloat(trade.from.amount || '0')
 
   return {
-    Type: 'Trade',
-    Buy: buyAmount,
-    CurBuy: trade.to.currency.symbol,
-    Sell: sellAmount,
-    CurSell: trade.from.currency.symbol,
-    Exchange: 'Uniswap',
-    Price: sellAmount / buyAmount,
+    type: 'Trade',
+    buy: buyAmount,
+    curBuy: trade.to.currency.symbol,
+    sell: sellAmount,
+    curSell: trade.from.currency.symbol,
+    exchange: 'Uniswap',
+    price: sellAmount / buyAmount,
     date: new Date(trade.date),
   }
 }
 
 /** Converts a transaction from the Ledger Live operations history to the Cointracking schema. Records deposits and withdrawals. */
-const ledgerTradeToCointracking = (trade: LedgerTrade): CoinTrackingTrade | null => {
+const loadLedgerTrade = (trade: LedgerTrade): Trade | null => {
   const isDeposit = trade['Operation Type'] === 'IN' || trade['Operation Type'] === 'UNDELEGATE'
   const isWithdrawal =
     trade['Operation Type'] === 'OUT' ||
@@ -280,25 +297,25 @@ const ledgerTradeToCointracking = (trade: LedgerTrade): CoinTrackingTrade | null
     trade['Operation Type'] === 'DELEGATE'
 
   return {
-    Type: isDeposit
+    type: isDeposit
       ? 'Deposit'
       : isWithdrawal
         ? 'Withdrawal'
         : trade['Operation Type'] === 'FEES'
           ? 'Spend'
           : error(`Unrecognized Ledger operation type: ${trade['Operation Type']}`),
-    Buy: isDeposit ? trade['Operation Amount'] : null,
-    CurBuy: isDeposit ? trade['Currency Ticker'] : undefined,
-    Sell: isWithdrawal ? +trade['Operation Amount'] : null,
-    CurSell: isWithdrawal ? trade['Currency Ticker'] : undefined,
-    Exchange: 'Ledger',
-    Fee: trade['Operation Type'] === 'FEES' ? trade['Operation Amount'].toString() : undefined,
+    buy: isDeposit ? trade['Operation Amount'] : null,
+    curBuy: isDeposit ? trade['Currency Ticker'] : undefined,
+    sell: isWithdrawal ? +trade['Operation Amount'] : null,
+    curSell: isWithdrawal ? trade['Currency Ticker'] : undefined,
+    exchange: 'Ledger',
+    fee: trade['Operation Type'] === 'FEES' ? trade['Operation Amount'].toString() : undefined,
     date: new Date(trade['Operation Date']),
   }
 }
 
 /** Loads a trade history file in one of the supported formats. */
-const loadTradeHistoryFile = async (file: string | null): Promise<CoinTrackingTrade[]> => {
+const loadTradeHistoryFile = async (file: string | null): Promise<Trade[]> => {
   if (!file) return []
   const text = fs.readFileSync(file, 'utf-8')
   const filename = path.basename(file)
@@ -308,7 +325,7 @@ const loadTradeHistoryFile = async (file: string | null): Promise<CoinTrackingTr
     // UniSwap
     case '.json': {
       const uniswapTrades = JSON.parse(text) as UniswapTrade[]
-      const trades = uniswapTrades.map(uniswapTradeToCointracking).filter(nonNull)
+      const trades = uniswapTrades.map(loadUniswapTrade).filter(nonNull)
       log.verbose(`  ${filename} [Uniswap]: ${trades.length} trades`)
       return trades
     }
@@ -324,20 +341,15 @@ const loadTradeHistoryFile = async (file: string | null): Promise<CoinTrackingTr
 
         // CoinTracking
         if (cointrackingColumns.every(col => headerColumns.includes(col))) {
-          const trades = (await csvtojson().fromString(fixCointrackingHeader(text))).map(trade => {
-            const { 'Trade Date': _, ...tradeWithDate } = trade
-            return {
-              ...tradeWithDate,
-              date: new Date(normalDate(trade['Trade Date'])),
-            }
-          }) as CoinTrackingTrade[]
+          const coinTrackingTrades = (await csvtojson().fromString(fixCointrackingHeader(text))) as CoinTrackingTrade[]
+          const trades = coinTrackingTrades.map(loadCoinTrackingTrade).filter(nonNull)
           log.verbose(`  ${filename} [CoinTracking]: ${trades.length} trades`)
           return trades
         }
         // Gemini
         else if (geminiColumns.every(col => headerColumns.includes(col))) {
           const geminiTrades = (await csvtojson().fromString(text)) as GeminiTrade[]
-          const trades = geminiTrades.map(geminiTradeToCointracking).filter(nonNull)
+          const trades = geminiTrades.map(loadGeminiTrade).filter(nonNull)
           log.verbose(`  ${filename} [Gemini]: ${trades.length} trades`)
           return trades
         }
@@ -346,17 +358,17 @@ const loadTradeHistoryFile = async (file: string | null): Promise<CoinTrackingTr
           const krakenTrades = (await csvtojson().fromString(text)) as KrakenTrade[]
           const trades = krakenTrades
             .map(row => {
-              const trade = krakenTradeToCointracking(row)
+              const trade = loadKrakenTrade(row)
               return [
                 trade,
                 // assume that funds are immediately withdrawn after a sale so that they are removed from the stock
                 trade && row.type === 'sell'
                   ? ({
                       ...trade,
-                      Type: 'Withdrawal' as const,
-                      Buy: null,
-                      BuyCur: null,
-                    } as CoinTrackingTrade)
+                      type: 'Withdrawal' as const,
+                      buy: null,
+                      buyCur: null,
+                    } as Trade)
                   : null,
               ]
             })
@@ -369,7 +381,7 @@ const loadTradeHistoryFile = async (file: string | null): Promise<CoinTrackingTr
         // Ledger Operation History
         else if (ledgerColumns.every(col => headerColumns.includes(col))) {
           const ledgerTrades = (await csvtojson().fromString(text)) as LedgerTrade[]
-          const trades = ledgerTrades.map(ledgerTradeToCointracking).filter(nonNull)
+          const trades = ledgerTrades.map(loadLedgerTrade).filter(nonNull)
           log.verbose(`  ${filename} [Ledger]: ${trades.length} trades`)
           return trades
         } else {
@@ -411,7 +423,7 @@ const loadTradeHistoryFile = async (file: string | null): Promise<CoinTrackingTr
 }
 
 /** Loads all trades from a file or directory. */
-const loadTrades = async (inputPath: string, limit?: number): Promise<CoinTrackingTrade[]> => {
+const loadTrades = async (inputPath: string, limit?: number): Promise<Trade[]> => {
   let inputPaths: string[] = []
 
   // dir

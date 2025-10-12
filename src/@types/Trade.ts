@@ -1,21 +1,21 @@
 import Ticker from './Ticker.js'
 
-interface CoinTrackingTrade {
+interface Trade {
   /** Trade type.
    * Rebate - Credit card rewards are rebates and are not considered taxable income. If received in crypto, track the date and basis of the rewards so when you sell the coins, you can determine your overall gain/loss.
    */
-  Type: 'Trade' | 'Deposit' | 'Withdrawal' | 'Spend' | 'Lost' | 'Income' | 'Rebate'
+  type: 'Trade' | 'Deposit' | 'Withdrawal' | 'Spend' | 'Lost' | 'Income' | 'Rebate'
   /** The amount received either through a Trade, Deposit, or Withdrawal (unsigned). */
-  Buy: number | null
+  buy: number | null
   /** The ticker symbol of the Buy currency. */
-  CurBuy?: Ticker
+  curBuy?: Ticker
   /** The amount debited through a Sell. */
-  Sell: number | null
+  sell: number | null
   /** The ticker symbol of the Sell currency. */
-  CurSell?: Ticker
-  Exchange: string
-  Fee?: string
-  'Trade Group'?:
+  curSell?: Ticker
+  exchange: string
+  fee?: string
+  tradeGroup?:
     | 'Bitfinex Margin'
     | 'Borrowed'
     | 'Exchange'
@@ -24,11 +24,9 @@ interface CoinTrackingTrade {
     | 'Kraken Rollover'
     | 'Lending'
     | 'Margin'
-  Comment?: string
-  Price?: number
-  // dd.mm.yyyy hh:mm
-  // Convert with normalDate
-  'Trade Date': string
+  comment?: string
+  price?: number
+  date: Date
 }
 
-export default CoinTrackingTrade
+export default Trade
