@@ -12,7 +12,7 @@ const stakingPairs: StakingPair[] = [
   },
   {
     unstaked: 'ETH',
-    staked: ['ETHX', 'WETH'],
+    staked: ['ETHX', 'WETH', 'STETH'],
   },
 ]
 

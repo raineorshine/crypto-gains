@@ -81,6 +81,7 @@ type Ticker =
   | 'SOL'
   | 'SPB'
   | 'SSS'
+  | 'STETH'
   | 'STT'
   | 'SW'
   | 'THBC'
