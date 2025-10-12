@@ -3,6 +3,7 @@ import fs from 'fs'
 import json2csv from 'json2csv'
 import mkdir from 'make-dir'
 import Loan from './@types/Loan.js'
+import Ticker from './@types/Ticker.js'
 import Transaction from './@types/Transaction.js'
 import TransactionWithGain from './@types/TransactionWithGain.js'
 import argv from './argv.js'
@@ -174,7 +175,7 @@ const sum = (x: number, y: number): number => x + y
     ...argv,
     // narrow option types that yargs types too generically
     accounting: argv.accounting as 'fifo' | 'lifo' | undefined,
-    trace: argv.trace?.toUpperCase(),
+    trace: argv.trace,
   })
 
   // sale.buy is the USD acquired from the trade ("buy" USD)
@@ -213,7 +214,7 @@ const sum = (x: number, y: number): number => x + y
   log('')
 
   log(argv.trace ? 'STOCK' : 'STOCK (sample)')
-  const sampleSymbols = new Set(argv.trace ? [argv.trace.toUpperCase()] : ['BTC', 'ETH'])
+  const sampleSymbols = new Set(argv.trace && argv.trace.length > 0 ? argv.trace : ['BTC', 'ETH'])
   const stockMap = stock.all() as { [key: string]: number }
   const stockFiltered = Object.fromEntries(Object.entries(stockMap).filter(([cur, amount]) => sampleSymbols.has(cur)))
   log(stockFiltered)

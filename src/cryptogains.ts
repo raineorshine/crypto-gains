@@ -88,7 +88,7 @@ const cryptogains = async (
   options: {
     accounting?: 'fifo' | 'lifo'
     likekind?: boolean
-    trace?: string
+    trace?: Ticker[]
   } = {},
 ) => {
   const income: CoinTrackingTrade[] = []
@@ -157,11 +157,18 @@ const cryptogains = async (
     for (let i in dayGroup) {
       const tx = dayGroup[i]
 
-      const traced = options.trace && (options.trace === tx.CurBuy || options.trace === tx.CurSell)
+      /** The ticker that is currently traced in this transaction, regardless of whether it is a buy or sell. Otherwise returns null. */
+      const traced = options.trace
+        ? options.trace.includes(tx.CurBuy!)
+          ? tx.CurBuy!
+          : options.trace.includes(tx.CurSell!)
+            ? tx.CurSell!
+            : null
+        : null
 
       // trace
       if (traced) {
-        log(`\nTRACE ${options.trace}`, 'tx', JSON.stringify(tx))
+        log(`\nTRACE ${traced}`, 'tx', JSON.stringify(tx))
       }
 
       // convert ICO's to Trade
@@ -219,8 +226,8 @@ const cryptogains = async (
 
         // trace
         if (traced) {
-          log(`TRACE ${options.trace} lending`, tx.Buy)
-          log(`TRACE ${options.trace} balance`, stock.balance(options.trace as Ticker))
+          log(`TRACE ${traced} lending`, tx.Buy)
+          log(`TRACE ${traced} balance`, stock.balance(traced!))
         }
       }
 
@@ -260,8 +267,8 @@ const cryptogains = async (
 
         // trace
         if (traced) {
-          log(`TRACE ${options.trace} margin trade`, sale)
-          log(`TRACE ${options.trace} balance`, stock.balance(options.trace as Ticker))
+          log(`TRACE ${traced} margin trade`, sale)
+          log(`TRACE ${traced} balance`, stock.balance(traced!))
         }
       }
 
@@ -289,8 +296,8 @@ const cryptogains = async (
 
           // trace
           if (traced) {
-            log(`TRACE ${options.trace} sale`, trades)
-            log(`TRACE ${options.trace} balance`, stock.balance(options.trace as Ticker))
+            log(`TRACE ${traced} sale`, trades)
+            log(`TRACE ${traced} balance`, stock.balance(tx.CurSell!))
           }
         }
         // Shift: we have to calculate the historical USD sale value since Coinbase only provides the token price
@@ -315,8 +322,8 @@ const cryptogains = async (
 
           // trace
           if (traced) {
-            log(`TRACE ${options.trace} margin trade`, sale)
-            log(`TRACE ${options.trace} balance`, stock.balance(options.trace as Ticker))
+            log(`TRACE ${traced} margin trade`, sale)
+            log(`TRACE ${traced} balance`, stock.balance(traced!))
           }
         }
       }
@@ -331,8 +338,8 @@ const cryptogains = async (
 
         // trace
         if (traced) {
-          log(`TRACE ${options.trace} purchase`, tx.Buy)
-          log(`TRACE ${options.trace} balance`, stock.balance(options.trace as Ticker))
+          log(`TRACE ${traced} purchase`, tx.Buy)
+          log(`TRACE ${traced} balance`, stock.balance(traced!))
         }
       }
 
@@ -370,7 +377,7 @@ const cryptogains = async (
         // trace
         if (traced) {
           log(`TRACE ${tx.CurSell} -> ${tx.CurBuy} trade`, trades)
-          log(`TRACE ${options.trace} balance`, stock.balance(options.trace as Ticker))
+          log(`TRACE ${traced} balance`, stock.balance(traced!))
         }
       }
 
@@ -410,8 +417,8 @@ const cryptogains = async (
 
         // trace
         if (traced) {
-          log(`TRACE ${options.trace} income`, tx.Buy)
-          log(`TRACE ${options.trace} balance`, stock.balance(options.trace as Ticker))
+          log(`TRACE ${traced} income`, tx.Buy)
+          log(`TRACE ${traced} balance`, stock.balance(traced!))
         }
       }
 
@@ -424,8 +431,8 @@ const cryptogains = async (
 
           // trace
           if (traced) {
-            log(`TRACE ${options.trace} airdrop`, tx.Buy)
-            log(`TRACE ${options.trace} balance`, stock.balance(options.trace as Ticker))
+            log(`TRACE ${traced} airdrop`, tx.Buy)
+            log(`TRACE ${traced} balance`, stock.balance(traced!))
           }
         }
         // SALT presale
@@ -435,8 +442,8 @@ const cryptogains = async (
 
           // trace
           if (traced) {
-            log(`TRACE ${options.trace} presale`, tx.Buy)
-            log(`TRACE ${options.trace} balance`, stock.balance(options.trace as Ticker))
+            log(`TRACE ${traced} presale`, tx.Buy)
+            log(`TRACE ${traced} balance`, stock.balance(traced!))
           }
         }
         // Forks have a cost basis of 0
@@ -450,8 +457,8 @@ const cryptogains = async (
 
           // trace
           if (traced) {
-            log(`TRACE ${options.trace} fork`, tx.Buy)
-            log(`TRACE ${options.trace} balance`, stock.balance(options.trace as Ticker))
+            log(`TRACE ${traced} fork`, tx.Buy)
+            log(`TRACE ${traced} balance`, stock.balance(traced!))
           }
         }
         // Otherwise assume the deposit is an internal transfer.
@@ -481,7 +488,7 @@ const cryptogains = async (
 
             // trace
             if (traced) {
-              log(`TRACE ${options.trace} balance`, stock.balance(options.trace as Ticker))
+              log(`TRACE ${traced} balance`, stock.balance(traced!))
             }
           }
         }
@@ -493,8 +500,8 @@ const cryptogains = async (
 
         // trace
         if (traced) {
-          log(`TRACE ${options.trace} withdrawal`, tx.Sell)
-          log(`TRACE ${options.trace} balance`, stock.balance(options.trace as Ticker))
+          log(`TRACE ${traced} withdrawal`, tx.Sell)
+          log(`TRACE ${traced} balance`, stock.balance(traced!))
         }
       }
 
@@ -505,8 +512,8 @@ const cryptogains = async (
 
         // trace
         if (traced) {
-          log(`TRACE ${options.trace} spend`, tx.Sell)
-          log(`TRACE ${options.trace} balance`, stock.balance(options.trace as Ticker))
+          log(`TRACE ${traced} spend`, tx.Sell)
+          log(`TRACE ${traced} balance`, stock.balance(traced!))
         }
       }
 
