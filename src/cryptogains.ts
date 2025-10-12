@@ -536,6 +536,8 @@ const cryptogains = async (
             txMatching = txs[0]
 
             // TODO: Cost Basis
+            // TODO: Withdraw and deposit in inverse, maintaining cost basis
+            // TODO: Does staking count as a sale since it converts ETH to WETH?
             stock.deposit(+tx.buy!, tx.curBuy, 0, tx.date)
             stock.withdraw(+txMatching.sell!, txMatching.curSell, tx.date, options.accounting)
           }
