@@ -230,13 +230,13 @@ const loadGeminiTrade = (trade: GeminiTrade): Trade | null => {
 
   // price = [total] cost / [tokens] buyAmount
   // Except Debits (withdrawals) which are not trades and price can be set to 0
-  const price = trade.Type === 'Debit' && buyAmount === 0 ? 0 : cost / buyAmount
+  const price = cost === 0 || (trade.Type === 'Debit' && buyAmount === 0) ? 0 : cost / buyAmount
 
   // price is required for Buy/Sell/Credit so that we calculate the correct cost basis
-  if (trade.Type === 'Sell' && cost === 0 && buyAmount < 1) {
+  if ((trade.Type === 'Buy' || trade.Type === 'Sell') && cost === 0 && buyAmount < 1) {
     if (buyAmount > 1) {
       error(
-        `Sometimes Gemini can return a zero cost on a Sell. As long as it is miniscule, this trade can be safely ignored. However, this trade has a buyAmount of ${buyAmount}, so it should be investigated.`,
+        `Sometimes Gemini can return a zero cost on a Buy/Sell. As long as it is miniscule, this trade can be safely ignored. However, this trade has a buyAmount of ${buyAmount}, so it should be investigated.`,
       )
     }
     return null
