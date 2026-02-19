@@ -94,7 +94,11 @@ const pairMap = new Map<string, TradingPair>([
   // Deposit/Withdraw AVAX (not really trading for USD)
   ['AVAX', { from: 'AVAX', to: 'USD' } as const],
   ['AVAXUSD', { from: 'AVAX', to: 'USD' } as const],
+  ['AAVEUSD', { from: 'AAVE', to: 'USD' } as const],
+  ['CRVUSD', { from: 'CRV', to: 'USD' } as const],
   ['DAIUSD', { from: 'DAI', to: 'USD' } as const],
+  ['DOGEBTC', { from: 'DOGE', to: 'BTC' } as const],
+  ['ETHBTC', { from: 'ETH', to: 'BTC' } as const],
   ['EOSUSD', { from: 'EOS', to: 'USD' } as const],
   // Deposit/Withdraw LTC (not really trading for USD)
   ['LTC', { from: 'LTC', to: 'USD' } as const],
@@ -103,6 +107,7 @@ const pairMap = new Map<string, TradingPair>([
   ['GNOUSD', { from: 'GNO', to: 'USD' } as const],
   ['GNOUSD', { from: 'GNO', to: 'USD' } as const],
   ['MATICUSD', { from: 'MATIC', to: 'USD' } as const],
+  ['OPUSD', { from: 'OP', to: 'USD' } as const],
   // Deposit/Withdraw SOL (not really trading for USD)
   ['SOL', { from: 'SOL', to: 'USD' } as const],
   ['SOLUSD', { from: 'SOL', to: 'USD' } as const],
@@ -114,7 +119,9 @@ const pairMap = new Map<string, TradingPair>([
   ['UNI', { from: 'UNI', to: 'USD' } as const],
   ['USD', {}],
   ['USDC', {}],
+  ['USDT', {}],
   ['USDCUSD', {}],
+  ['USDTUSD', {}],
   ['USDTZUSD', {}],
   // BTC deposits only (type: 'Credit')
   ['BTC', { from: 'BTC', to: 'USD' } as const],
@@ -243,7 +250,7 @@ const loadGeminiTrade = (trade: GeminiTrade): Trade | null => {
   }
 
   if ((trade.Type === 'Buy' || trade.Type === 'Sell') && isNaN(cost / price)) {
-    error('NaN encountered: cost / price', { trade, from, to, cost, price, buyAmount })
+    error('loadGeminiTrade: NaN encountered: cost / price', { trade, from, to, cost, price, buyAmount })
   }
 
   return {
