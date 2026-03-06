@@ -4,6 +4,7 @@ interface GeminiTrade {
   // hh:mm:ss.msm
   'Time (UTC)': string
   Type: 'Buy' | 'Sell' | 'Debit' | 'Credit'
+  // Cast from string to Ticker only after toUppercase().
   Symbol: string
   Specification: string
   'Liquidity Indicator': string

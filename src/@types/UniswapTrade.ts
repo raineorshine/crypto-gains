@@ -1,24 +1,25 @@
-import Ticker from './Ticker.js'
-
 interface UniswapTrade {
   // ISOString
   date: string
   from: {
     amount: string
     currency: {
-      symbol: Ticker
+      // Cast from string to Ticker only after toUppercase().
+      symbol: string
     }
   }
   to: {
     amount: string
     currency: {
-      symbol: Ticker
+      // Cast from string to Ticker only after toUppercase().
+      symbol: string
     }
   }
   fee: {
     amount: string
     currency: {
-      symbol: Ticker
+      // Cast from string to Ticker only after toUppercase().
+      symbol: string
     }
   }
   type: 'exchange' // eventually add other types

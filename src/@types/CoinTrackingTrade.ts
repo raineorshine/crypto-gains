@@ -8,11 +8,13 @@ interface CoinTrackingTrade {
   /** The amount received either through a Trade, Deposit, or Withdrawal (unsigned). */
   Buy: number | null
   /** The ticker symbol of the Buy currency. */
-  CurBuy?: Ticker
+  // Cast from string to Ticker only after toUppercase().
+  CurBuy?: string
   /** The amount debited through a Sell. */
   Sell: number | null
   /** The ticker symbol of the Sell currency. */
-  CurSell?: Ticker
+  // Cast from string to Ticker only after toUppercase().
+  CurSell?: string
   Exchange: string
   Fee?: string
   'Trade Group'?:

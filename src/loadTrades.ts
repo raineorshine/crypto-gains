@@ -5,6 +5,7 @@ import CoinTrackingTrade from './@types/CoinTrackingTrade.js'
 import GeminiTrade from './@types/GeminiTrade.js'
 import KrakenTrade from './@types/KrakenTrade.js'
 import LedgerTrade from './@types/LedgerTrade.js'
+import Ticker from './@types/Ticker.js'
 import Trade from './@types/Trade.js'
 import TradingPair from './@types/TradingPair.js'
 import UniswapTrade from './@types/UniswapTrade.js'
@@ -164,8 +165,8 @@ const loadCoinTrackingTrade = (trade: CoinTrackingTrade): Trade | null => {
     type: trade.Type,
     buy: trade.Buy,
     comment: trade.Comment,
-    curBuy: trade.CurBuy,
-    curSell: trade.CurSell,
+    curBuy: trade.CurBuy?.toUpperCase() as Ticker,
+    curSell: trade.CurSell?.toUpperCase() as Ticker,
     exchange: trade.Exchange,
     fee: trade.Fee,
     price: trade.Price,
@@ -285,9 +286,9 @@ const loadUniswapTrade = (trade: UniswapTrade): Trade | null => {
   return {
     type: 'Trade',
     buy: buyAmount,
-    curBuy: trade.to.currency.symbol,
+    curBuy: trade.to.currency.symbol.toUpperCase() as Ticker,
     sell: sellAmount,
-    curSell: trade.from.currency.symbol,
+    curSell: trade.from.currency.symbol.toUpperCase() as Ticker,
     exchange: 'Uniswap',
     price: sellAmount / buyAmount,
     date: new Date(trade.date),
@@ -296,6 +297,7 @@ const loadUniswapTrade = (trade: UniswapTrade): Trade | null => {
 
 /** Converts a transaction from the Ledger Live operations history to the Cointracking schema. Records deposits and withdrawals. */
 const loadLedgerTrade = (trade: LedgerTrade): Trade | null => {
+  const ticker = (trade['Currency Ticker'] as string).toUpperCase() as Ticker
   const isDeposit = trade['Operation Type'] === 'IN' || trade['Operation Type'] === 'UNDELEGATE'
   const isWithdrawal =
     trade['Operation Type'] === 'OUT' ||
@@ -313,9 +315,9 @@ const loadLedgerTrade = (trade: LedgerTrade): Trade | null => {
           ? 'Spend'
           : error(`Unrecognized Ledger operation type: ${trade['Operation Type']}`),
     buy: isDeposit ? trade['Operation Amount'] : null,
-    curBuy: isDeposit ? trade['Currency Ticker'] : undefined,
+    curBuy: isDeposit ? ticker : undefined,
     sell: isWithdrawal ? +trade['Operation Amount'] : null,
-    curSell: isWithdrawal ? trade['Currency Ticker'] : undefined,
+    curSell: isWithdrawal ? ticker : undefined,
     exchange: 'Ledger',
     fee: trade['Operation Type'] === 'FEES' ? trade['Operation Amount'].toString() : undefined,
     date: new Date(trade['Operation Date']),

@@ -1,9 +1,8 @@
-import Ticker from './Ticker.js'
-
 interface LedgerTrade {
   'Operation Date': string
   Status: 'Confirmed' | 'Unconfirmed' | 'Failed'
-  'Currency Ticker': Ticker
+  // Cast from string to Ticker only after toUppercase().
+  'Currency Ticker': string
   'Operation Type': 'IN' | 'OUT' | 'FEES' | 'WITHDRAW_UNBONDED' | 'DELEGATE' | 'UNDELEGATE'
   'Operation Amount': number
   'Operation Fees': number
