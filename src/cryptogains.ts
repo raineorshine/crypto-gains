@@ -576,6 +576,12 @@ const cryptogains = async (
           // then credit the unstaked token with that same USD value as its cost basis.
           const p = (await tryPrice(tx, txWithdrawStaked.curSell, 'USD', day(tx.date))) || 0
 
+          if (!p) {
+            throw new Error(
+              `TODO: Price for ${txWithdrawStaked.curSell} returned 0. Does CryptoCompare provide prices for staked tokens? If not, we need another solution to price staked token withdrawals since they are taxable.`,
+            )
+          }
+
           // taxable amount in USD
           const buyUSD = +txWithdrawStaked.sell! * p
 
