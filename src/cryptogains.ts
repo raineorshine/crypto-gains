@@ -481,7 +481,8 @@ const cryptogains = async (
             log(`TRACE ${traced} balance`, stock.balance(traced!))
           }
         }
-        // stake
+        // stake: e.g. ETH -> ETHx
+        // A deposit of a staked token with a same-timestamp unstaked withdrawal is a taxable sale of the unstaked token.
         else if (tx.curBuy && stakingSymbols.has(tx.curBuy)) {
           staking.push(tx)
 
