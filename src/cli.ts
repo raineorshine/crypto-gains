@@ -161,6 +161,7 @@ const sum = (x: number, y: number): number => x + y
     cryptoPurchases,
     airdrops,
     staked,
+    unstaked,
     deposits,
     withdrawals,
     tradeTxs,
@@ -189,6 +190,7 @@ const sum = (x: number, y: number): number => x + y
     cryptoPurchases.length +
     airdrops.length +
     staked.length +
+    unstaked.length +
     deposits.length +
     income.length +
     rebates.length +
@@ -202,6 +204,7 @@ const sum = (x: number, y: number): number => x + y
   log('Crypto purchases:', cryptoPurchases.length)
   log('Airdrops:', airdrops.length)
   log('Staked:', staked.length)
+  log('Unstaked:', unstaked.length)
   log('Income:', income.length)
   log('Rebates:', rebates.length)
   log('Trades:', tradeTxs.length)

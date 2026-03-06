@@ -112,6 +112,7 @@ const cryptogains = async (
   const tradeTxs: Trade[] = []
   const airdrops: Trade[] = []
   const staked: Trade[] = []
+  const unstaked: Trade[] = []
 
   /* List of sales (not including like-kind-exchanges)
   {
@@ -561,7 +562,7 @@ const cryptogains = async (
             ),
           )
         ) {
-          staked.push(tx)
+          unstaked.push(tx)
 
           const stakedVariants = stake(tx.curBuy)!
           const txWithdrawStaked = dayGroup.find(
@@ -676,6 +677,7 @@ const cryptogains = async (
     cryptoPurchases,
     airdrops,
     staked,
+    unstaked,
     deposits,
     withdrawals,
     tradeTxs,
