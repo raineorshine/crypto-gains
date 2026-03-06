@@ -111,7 +111,7 @@ const cryptogains = async (
   const margin: Trade[] = []
   const tradeTxs: Trade[] = []
   const airdrops: Trade[] = []
-  const staking: Trade[] = []
+  const staked: Trade[] = []
 
   /* List of sales (not including like-kind-exchanges)
   {
@@ -484,7 +484,7 @@ const cryptogains = async (
         // stake: e.g. ETH -> ETHx
         // A deposit of a staked token with a same-timestamp unstaked withdrawal is a taxable sale of the unstaked token.
         else if (tx.curBuy && stakingSymbols.has(tx.curBuy)) {
-          staking.push(tx)
+          staked.push(tx)
 
           const curUnstaked = unstake(tx.curBuy)
           if (!curUnstaked) {
@@ -561,7 +561,7 @@ const cryptogains = async (
             ),
           )
         ) {
-          staking.push(tx)
+          staked.push(tx)
 
           const stakedVariants = stake(tx.curBuy)!
           const txWithdrawStaked = dayGroup.find(
@@ -675,7 +675,7 @@ const cryptogains = async (
     cryptoSales,
     cryptoPurchases,
     airdrops,
-    staking,
+    staked,
     deposits,
     withdrawals,
     tradeTxs,
