@@ -484,20 +484,20 @@ const cryptogains = async (
         else if (tx.curBuy && stakingSymbols.has(tx.curBuy)) {
           staking.push(tx)
 
-          const unstaked = unstake(tx.curBuy)
-          if (!unstaked) {
+          const curUnstaked = unstake(tx.curBuy)
+          if (!curUnstaked) {
             throw new Error(`stakingPairs missing entry for ${tx.curBuy}`)
           }
 
           // find matching withdrawal with exact same time
-          const txMatching = dayGroup.find(
+          const txWithdrawal = dayGroup.find(
             otherTx =>
               otherTx.type === 'Withdrawal' &&
-              otherTx.curSell === unstaked &&
+              otherTx.curSell === curUnstaked &&
               otherTx.date.getTime() === tx.date.getTime(),
           )
 
-          if (!txMatching) {
+          if (!txWithdrawal) {
             const sameDayWithdrawals = dayGroup
               .filter(otherTx => otherTx.type === 'Withdrawal')
               .map(otherTx => ({
@@ -516,17 +516,33 @@ const cryptogains = async (
               )
             }
           } else {
-            // TODO: Cost Basis
-            // TODO: Withdraw and deposit in inverse, maintaining cost basis
-            // TODO: Does staking count as a sale since it converts ETH to WETH?
-            stock.deposit(+tx.buy!, tx.curBuy, 0, tx.date)
-            stock.withdraw(+txMatching.sell!, txMatching.curSell, tx.date, options.accounting)
+            // Staking is a taxable sale: debit the unstaked asset at its current price,
+            // then credit the staked token with that same USD value as its cost basis.
+            const p = (await tryPrice(tx, curUnstaked, 'USD', day(tx.date))) || 0
+
+            // taxable amount in USD
+            const buyUSD = +txWithdrawal.sell! * p
+
+            // log as a taxable sale
+            sales.push(
+              ...stock.trade({
+                sell: +txWithdrawal.sell!,
+                sellCur: txWithdrawal.curSell,
+                buy: buyUSD,
+                buyCur: 'USD',
+                date: tx.date,
+                type: options.accounting,
+              }),
+            )
+
+            // credit the staked token with the same USD cost basis
+            stock.deposit(+tx.buy!, tx.curBuy!, buyUSD, tx.date)
           }
 
           // trace
           if (traced) {
             log(`TRACE ${traced} stake`, tx.buy)
-            log(`TRACE ${traced} stake matching withdrawal`, txMatching)
+            log(`TRACE ${traced} stake matching withdrawal`, txWithdrawal)
             log(`TRACE ${traced} balance`, stock.balance(traced!))
           }
         }
