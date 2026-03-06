@@ -491,14 +491,14 @@ const cryptogains = async (
           }
 
           // find matching withdrawal with exact same time
-          const txWithdrawal = dayGroup.find(
+          const txWithdrawUnstaked = dayGroup.find(
             otherTx =>
               otherTx.type === 'Withdrawal' &&
               otherTx.curSell === curUnstaked &&
               otherTx.date.getTime() === tx.date.getTime(),
           )
 
-          if (!txWithdrawal) {
+          if (!txWithdrawUnstaked) {
             const sameDayWithdrawals = dayGroup
               .filter(otherTx => otherTx.type === 'Withdrawal')
               .map(otherTx => ({
@@ -522,13 +522,13 @@ const cryptogains = async (
             const p = (await tryPrice(tx, curUnstaked, 'USD', day(tx.date))) || 0
 
             // taxable amount in USD
-            const buyUSD = +txWithdrawal.sell! * p
+            const buyUSD = +txWithdrawUnstaked.sell! * p
 
             // log as a taxable sale
             sales.push(
               ...stock.trade({
-                sell: +txWithdrawal.sell!,
-                sellCur: txWithdrawal.curSell,
+                sell: +txWithdrawUnstaked.sell!,
+                sellCur: txWithdrawUnstaked.curSell,
                 buy: buyUSD,
                 buyCur: 'USD',
                 date: tx.date,
@@ -543,24 +543,27 @@ const cryptogains = async (
           // trace
           if (traced) {
             log(`TRACE ${traced} stake`, tx.buy)
-            log(`TRACE ${traced} stake matching withdrawal`, txWithdrawal)
+            log(`TRACE ${traced} stake matching withdrawal`, txWithdrawUnstaked)
             log(`TRACE ${traced} balance`, stock.balance(traced!))
           }
         }
         // unstake: e.g. ETHx -> ETH
         // A deposit of an unstaked token with a same-timestamp staked withdrawal is a taxable sale of the staked token.
-        else if (tx.curBuy && stake(tx.curBuy)?.some(stakedCur =>
-          dayGroup.some(
-            otherTx =>
-              otherTx.type === 'Withdrawal' &&
-              otherTx.curSell === stakedCur &&
-              otherTx.date.getTime() === tx.date.getTime(),
-          ),
-        )) {
+        else if (
+          tx.curBuy &&
+          stake(tx.curBuy)?.some(stakedCur =>
+            dayGroup.some(
+              otherTx =>
+                otherTx.type === 'Withdrawal' &&
+                otherTx.curSell === stakedCur &&
+                otherTx.date.getTime() === tx.date.getTime(),
+            ),
+          )
+        ) {
           staking.push(tx)
 
           const stakedVariants = stake(tx.curBuy)!
-          const txWithdrawal = dayGroup.find(
+          const txWithdrawStaked = dayGroup.find(
             otherTx =>
               otherTx.type === 'Withdrawal' &&
               stakedVariants.includes(otherTx.curSell!) &&
@@ -569,16 +572,16 @@ const cryptogains = async (
 
           // Unstaking is a taxable sale: debit the staked asset at its current price,
           // then credit the unstaked token with that same USD value as its cost basis.
-          const p = (await tryPrice(tx, txWithdrawal.curSell, 'USD', day(tx.date))) || 0
+          const p = (await tryPrice(tx, txWithdrawStaked.curSell, 'USD', day(tx.date))) || 0
 
           // taxable amount in USD
-          const buyUSD = +txWithdrawal.sell! * p
+          const buyUSD = +txWithdrawStaked.sell! * p
 
           // log as a taxable sale
           sales.push(
             ...stock.trade({
-              sell: +txWithdrawal.sell!,
-              sellCur: txWithdrawal.curSell,
+              sell: +txWithdrawStaked.sell!,
+              sellCur: txWithdrawStaked.curSell,
               buy: buyUSD,
               buyCur: 'USD',
               date: tx.date,
@@ -592,7 +595,7 @@ const cryptogains = async (
           // trace
           if (traced) {
             log(`TRACE ${traced} unstake`, tx.buy)
-            log(`TRACE ${traced} unstake matching withdrawal`, txWithdrawal)
+            log(`TRACE ${traced} unstake matching withdrawal`, txWithdrawStaked)
             log(`TRACE ${traced} balance`, stock.balance(traced!))
           }
         }
