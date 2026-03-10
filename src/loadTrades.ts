@@ -5,6 +5,7 @@ import CoinTrackingTrade from './@types/CoinTrackingTrade.js'
 import GeminiTrade from './@types/GeminiTrade.js'
 import KrakenTrade from './@types/KrakenTrade.js'
 import LedgerTrade from './@types/LedgerTrade.js'
+import LidoRewardTrade from './@types/LidoRewardTrade.js'
 import Ticker from './@types/Ticker.js'
 import Trade from './@types/Trade.js'
 import TradingPair from './@types/TradingPair.js'
@@ -13,7 +14,7 @@ import error from './error.js'
 import log from './log.js'
 import nonNull from './nonNull.js'
 
-const allowedCsvFormats = ['CoinTracking', 'Gemini', 'Kraken', 'Ledger Operation History']
+const allowedCsvFormats = ['CoinTracking', 'Gemini', 'Kraken', 'Ledger Operation History', 'Lido Rewards']
 
 // Corresponding type: CoinTrackingTrade
 const cointrackingColumns: (keyof CoinTrackingTrade | 'Cur.')[] = [
@@ -72,6 +73,9 @@ const krakenColumns = [
   'misc',
   'ledgers',
 ]
+
+// Corresponding type: LidoRewardTrade
+const lidoRewardColumns = ['date', 'type', 'direction', 'change', 'change_wei', 'change_USD', 'apr', 'balance', 'balance_wei']
 
 // Corresponding type: LedgerTrade
 const ledgerColumns = [
@@ -295,6 +299,24 @@ const loadUniswapTrade = (trade: UniswapTrade): Trade | null => {
   }
 }
 
+/** Converts a Lido staking reward row to the Cointracking schema. Imports reward rows as Income. Skips staking transfer rows (handled by other trade history files). */
+const loadLidoRewardTrade = (trade: LidoRewardTrade): Trade | null => {
+  if (trade.type !== 'reward') return null
+
+  const amount = +trade.change
+  const price = amount > 0 && +trade.change_USD > 0 ? +trade.change_USD / amount : undefined
+
+  return {
+    type: 'Income',
+    buy: amount,
+    curBuy: 'STETH',
+    sell: null,
+    exchange: 'Lido',
+    price,
+    date: new Date(trade.date),
+  }
+}
+
 /** Converts a transaction from the Ledger Live operations history to the Cointracking schema. Records deposits and withdrawals. */
 const loadLedgerTrade = (trade: LedgerTrade): Trade | null => {
   const ticker = (trade['Currency Ticker'] as string).toUpperCase() as Ticker
@@ -393,6 +415,13 @@ const loadTradeHistoryFile = async (file: string | null): Promise<Trade[]> => {
           const ledgerTrades = (await csvtojson().fromString(text)) as LedgerTrade[]
           const trades = ledgerTrades.map(loadLedgerTrade).filter(nonNull)
           log.verbose(`  ${filename} [Ledger]: ${trades.length} trades`)
+          return trades
+        }
+        // Lido Rewards
+        else if (lidoRewardColumns.every(col => headerColumns.includes(col))) {
+          const lidoTrades = (await csvtojson().fromString(text)) as LidoRewardTrade[]
+          const trades = lidoTrades.map(loadLidoRewardTrade).filter(nonNull)
+          log.verbose(`  ${filename} [Lido Rewards]: ${trades.length} trades`)
           return trades
         } else {
           const matchResults = allowedCsvFormats.map(format => {
