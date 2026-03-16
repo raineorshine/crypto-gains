@@ -4,6 +4,7 @@ import json2csv from 'json2csv'
 import mkdir from 'make-dir'
 import Loan from './@types/Loan.js'
 import Ticker from './@types/Ticker.js'
+import Trade from './@types/Trade.js'
 import Transaction from './@types/Transaction.js'
 import TransactionWithGain from './@types/TransactionWithGain.js'
 import argv from './argv.js'
@@ -53,6 +54,7 @@ const sum = (x: number, y: number): number => x + y
     sales: TransactionWithGain[],
     interest: Loan[],
     likeKindExchanges: Transaction[],
+    income: Trade[],
   ) => {
     const stSales = sales.filter(isShortTerm)
     const ltSales = sales.filter(sale => !isShortTerm(sale))
@@ -61,9 +63,10 @@ const sum = (x: number, y: number): number => x + y
     const ltSalesYear = ltSales.filter(sale => sale.date.getFullYear() === year)
     const interestYear = interest.filter(tx => tx.date.getFullYear() === year)
     const likeKindExchangesYear = likeKindExchanges.filter((tx: Transaction) => tx.date.getFullYear() === year)
+    const incomeYear = income.filter(tx => tx.date.getFullYear() === year)
 
     const hasTrades =
-      stSalesYear.length > 0 || ltSalesYear.length > 0 || likeKindExchangesYear.length > 0 || interestYear.length > 0
+      stSalesYear.length > 0 || ltSalesYear.length > 0 || likeKindExchangesYear.length > 0 || interestYear.length > 0 || incomeYear.length > 0
     if (!hasTrades) return
 
     // summary
@@ -86,6 +89,12 @@ const sum = (x: number, y: number): number => x + y
       log(
         `${year} Interest (${interestYear.length}):`,
         formatPrice(interestYear.map(tx => tx.interestEarnedUSD).reduce(sum, 0)),
+      )
+    }
+    if (incomeYear.length > 0) {
+      log(
+        `${year} Income (${incomeYear.length}):`,
+        formatPrice(incomeYear.map(tx => (tx.buy || 0) * (tx.price || 0)).reduce(sum, 0)),
       )
     }
     log('')
@@ -145,6 +154,23 @@ const sum = (x: number, y: number): number => x + y
             { value: 'loanAmount', label: 'Loan Amount' },
             { value: 'loanCurrency', label: 'Loan Currency' },
             { value: 'interestEarnedUSD', label: 'Interest Earned (USD)' },
+          ]),
+        )
+      }
+      if (incomeYear.length) {
+        const incomeWithValue = incomeYear.map(tx => ({
+          ...tx,
+          valueUSD: (tx.buy || 0) * (tx.price || 0),
+        }))
+        fs.writeFileSync(
+          `${dir}income-${year}.csv`,
+          toCSV(incomeWithValue, [
+            { value: 'date', label: 'Date' },
+            { value: 'buy', label: 'Amount' },
+            { value: 'curBuy', label: 'Currency' },
+            { value: 'exchange', label: 'Exchange' },
+            { value: 'price', label: 'Price (USD)' },
+            { value: 'valueUSD', label: 'Value (USD)' },
           ]),
         )
       }
@@ -229,6 +255,6 @@ const sum = (x: number, y: number): number => x + y
   log('')
 
   for (let y = 2016; y <= new Date().getFullYear(); y++) {
-    outputByYear(y, salesWithGain, interest, likeKindExchanges)
+    outputByYear(y, salesWithGain, interest, likeKindExchanges, income)
   }
 })()
